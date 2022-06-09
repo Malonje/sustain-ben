@@ -1,0 +1,24 @@
+{
+    "os": "Linux-4.15.0-180-generic-x86_64-with-glibc2.27",
+    "python": "3.9.12",
+    "heartbeatAt": "2022-06-06T10:43:56.344660",
+    "startedAt": "2022-06-06T10:43:53.434804",
+    "docker": null,
+    "gpu": "GeForce RTX 2070 SUPER",
+    "gpu_count": 1,
+    "cpu_count": 8,
+    "cuda": "10.1.105",
+    "args": [],
+    "state": "running",
+    "program": "/home/parichya/Documents/sustainbench/run.py",
+    "codePath": "run.py",
+    "git": {
+        "remote": "https://github.com/sustainlab-group/sustainbench.git",
+        "commit": "ebdf9bb379c0458b3cdeb55550ced18d8f723242"
+    },
+    "email": "s.greatsirohi@gmail.com",
+    "root": "/home/parichya/Documents/sustainbench",
+    "host": "sa-pc-iiitd",
+    "username": "parichya",
+    "executable": "/home/parichya/anaconda3/envs/sustainben/bin/python"
+}

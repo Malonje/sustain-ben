@@ -1,0 +1,1 @@
+{"Epoch [1/f'5'] Average Train Accuracy": 0.79522, "Avergae Dice Score": 0.55159, "Average Train Loss": 269.45491, "X-Axis": 1, "_timestamp": 1654504103, "_runtime": 85, "_step": 1, "Epoch [2/f'5'] Average Train Accuracy": 0.81167, "_wandb": {"runtime": 110}}

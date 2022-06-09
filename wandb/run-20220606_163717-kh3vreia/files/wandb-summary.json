@@ -1,0 +1,1 @@
+{"Average Train Accuracy": 0.76097, "Avergae Dice Score": 0.0, "Average Train Loss": 231.04945, "Average Val Train Accuracy": 0.75556, "Average Val Dice Score": 0.0, "Average Val Loss": 390.31021, "_timestamp": 1654522092, "_runtime": 8455, "_step": 199, "_wandb": {"runtime": 8456}}
