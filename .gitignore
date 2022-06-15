@@ -216,3 +216,6 @@ clean_data/*
 
 #files
 best-unet-sentinel/
+model_weights/*
+data/
+wandb/

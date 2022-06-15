@@ -49,8 +49,8 @@ class CropSegmentationDataset(SustainBenchDataset):
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='official', oracle_training_set=False, seed=111, filled_mask=False, use_ood_val=False):
         self._version = version
-        self._data_dir = "/home/parichya/Documents/sustainbench/data/crop_delineation/" # TODO: implementation only
-        #self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
+        self._data_dir = "data/crop_seg_v1.1/" # TODO: implementation only
+        # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
 
         self._split_dict = {'train': 0, 'val': 1, 'test': 2}
         self._split_names = {'train': 'Train', 'val': 'Val', 'test': 'Test'}

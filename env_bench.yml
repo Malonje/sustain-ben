@@ -35,5 +35,7 @@ dependencies:
   # - tensorflow-gpu=1.15.*   # for GPU support
   - tqdm=4.62.*
   - typing_extensions=3.7.*   # required for TensorFlow 2.5 compatibility
-#  - pip:
-#    - tensorflow==2.5.*
+  - pip:
+    - segmentation-models-pytorch
+    - albumentations
+    - wandb

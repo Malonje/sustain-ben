@@ -4,10 +4,10 @@ from segmentation_models_pytorch import Unet
 # import keras
 # import tensorflow as tf
 # from keras.preprocessing import image
-import segmentation_models as sm
+# import segmentation_models as sm
 # sm.set_framework('tf.keras')
-import matplotlib.pyplot as plt
-from sklearn.metrics import f1_score, accuracy_score, precision_recall_fscore_support
+# import matplotlib.pyplot as plt
+# from sklearn.metrics import f1_score, accuracy_score, precision_recall_fscore_support
 from torchvision import transforms
 import torch
 import torch.nn as nn
@@ -16,10 +16,10 @@ import torch.nn.functional as F
 # from keras import regularizers
 from PIL import Image
 from random import randint
-from models.unet import unet
-from models.unet_dilated import unet_dilated
-from utils.data_loader_utils import batch_generator, batch_generator_DG
-from utils.metrics import *
+# from models.unet import unet
+# from models.unet_dilated import unet_dilated
+# from utils.data_loader_utils import batch_generator, batch_generator_DG
+# from utils.metrics import *
 import numpy as np
 import pandas as pd
 import glob
@@ -33,90 +33,75 @@ from sustainbench.common.data_loaders import get_train_loader, get_eval_loader
 import torchvision.transforms as transforms
 from sustainbench import logger
 import os
+
+import albumentations as albu
+from albumentations.pytorch import ToTensorV2
+
+
+def to_tensor(x, **kwargs):
+    return x.transpose(2, 0, 1).astype('float32')
+
+
+def get_preprocessing(preprocessing_fn):
+    """Construct preprocessing transform
+
+    Args:
+        preprocessing_fn (callbale): data normalization function
+            (can be specific for each pretrained neural network)
+    Return:
+        transform: albumentations.Compose
+
+    """
+
+    _transform = [
+        albu.Lambda(image=preprocessing_fn),
+        albu.Lambda(image=to_tensor, mask=to_tensor),
+    ]
+    return albu.Compose(_transform)
+
+
 image_type = 'sentinel'
 
-filepath= 'best-unet-' + image_type
+filepath = 'best-unet-' + image_type
 csv_log_file = 'log_unet_' + image_type
-batch_size=6
+batch_size = 6
 
 # Load the full dataset, and download it if necessary
-dataset = get_dataset(dataset='crop_seg', filled_mask=False)
+dataset = get_dataset(dataset='crop_seg', filled_mask=False, download=True)
 
 BACKBONE = 'resnet34'
 preprocess_input = get_preprocessing_fn(BACKBONE)
-checkpoint_path='/home/parichya/Documents/dilineation_result/'
+checkpoint_path = 'model_weights/'
 
 run_name = logger.init(project='dilineation', reinit=True)
+
 # Get the training set
-train_data = dataset.get_subset('train', transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
-val_data   = dataset.get_subset('val', transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
+train_data = dataset.get_subset('train', transform=get_preprocessing(preprocess_input), preprocess_fn=True)
+val_data = dataset.get_subset('val', transform=get_preprocessing(preprocess_input), preprocess_fn=True)
 
 # Prepare the standard data loader
 train_loader = get_train_loader('standard', train_data, batch_size=batch_size)
-val_loader   = get_train_loader('standard', val_data, batch_size=batch_size)
+val_loader = get_train_loader('standard', val_data, batch_size=batch_size)
 
-# print(555555)
 Image.MAX_IMAGE_PIXELS = None
 warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
-# preprocess_input = sm.get_preprocessing(BACKBONE)
-# def get_metric(y_true, y_pred, n_classes=2):
-#     """
-#     Mean Intersect over Union metric.
-#     Computes the one versus all IoU for each class and returns the average.
-#     Classes that do not appear in the provided set are not counted in the average.
-#     Args:
-#         y_true (1D-array): True labels
-#         y_pred (1D-array): Predicted labels
-#         n_classes (int): Total number of classes
-#     Returns:
-#         mean Iou (float)
-#     """
-#     # print(len(y_pred))
-#
-#     TP = 0
-#     FP = 0
-#     TN = 0
-#     FN = 0
-#     for i in range(len(y_pred)):
-#         if y_true[i] == y_pred[i] == 1:
-#             TP += 1
-#         if y_pred[i] == 1 and y_true[i] != y_pred[i]:
-#             FP += 1
-#         if y_true[i] == y_pred[i] == 0:
-#             TN += 1
-#         if y_pred[i] == 0 and y_true[i] != y_pred[i]:
-#             FN += 1
-#     # print(len(y_pred))
-#     accuracy = (TP + TN) / (TP + TN + FP + FN)
-#     precision = TP / (TP + FP) if TP > 0 else 0
-#     recall = TP / (TP + FN) if TP > 0 else 0
-#     f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-#     return f1
 
-
-
-# def save_checkpoint(model, checkpoint_path=None, classifier=None):
-#     if checkpoint_path:
-#         torch.save(model, os.path.join(checkpoint_path, "best.checkpoint.pth.tar"))
-#     else:
-#         print("Checkpoint path not specified! Skipping torch.save()")
-
-def get_metric(y_true, y_pred, binarized=True):
-    y_true = y_true.detach().cpu().numpy().flatten()
-    y_pred = y_pred.detach().cpu().numpy().flatten()
-    assert(y_true.shape == y_pred.shape)
-    if not binarized:
-      y_pred[y_pred > 0.5] = 1
-      y_pred[y_pred != 1] = 0
-    y_true = y_true.astype(int)
-    y_pred = y_pred.astype(int)
-    f1 = f1_score(y_true, y_pred, average='binary', pos_label=1)
-    acc = accuracy_score(y_true, y_pred)
-    # print('Dice/ F1 score:', f1)
-    # print('Accuracy score:', acc)
-    # print("Precision recall fscore", precision_recall_fscore_support(y_true, y_pred, average='binary', pos_label=1))
-    return f1, acc
+# def get_metric(y_true, y_pred, binarized=True):
+#     y_true = y_true.detach().cpu().numpy().flatten()
+#     y_pred = y_pred.detach().cpu().numpy().flatten()
+#     assert(y_true.shape == y_pred.shape)
+#     if not binarized:
+#       y_pred[y_pred > 0.5] = 1
+#       y_pred[y_pred != 1] = 0
+#     y_true = y_true.astype(int)
+#     y_pred = y_pred.astype(int)
+#     f1 = f1_score(y_true, y_pred, average='binary', pos_label=1)
+#     acc = accuracy_score(y_true, y_pred)
+#     # print('Dice/ F1 score:', f1)
+#     # print('Accuracy score:', acc)
+#     # print("Precision recall fscore", precision_recall_fscore_support(y_true, y_pred, average='binary', pos_label=1))
+#     return f1, acc
 
 
 def learning_rate_scheduler(epoch):
@@ -146,37 +131,39 @@ num_channels = 3
 if is_stacked:
     num_channels = 9
 
-input_shape = (224,224,num_channels)
+input_shape = (224, 224, num_channels)
 
 
-model = None
 if is_dilated:
-    model = unet_dilated(input_size = input_shape)
+    # model = unet_dilated(input_size=input_shape)
+    pass
 elif is_imageNet:
-    # model_unet = Unet(BACKBONE, encoder_weights='imagenet')
-    model_unet = smp.Unet(encoder_name="resnet34", encoder_weights="imagenet",in_channels=3,classes=1)
+    model_unet = smp.Unet(encoder_name="resnet34", encoder_weights="imagenet", in_channels=3, classes=1)
 
     if is_stacked:
-        modules = []
-        modules.append(nn.Conv2d(num_channels, 3,  kernel_size=(1,1), padding='same'),nn.ReLU())
-        modules.append(model_unet)
-
-        new_model = nn.Sequential(*modules)
-
-        model = new_model
-
+        modules = [
+            nn.Conv2d(num_channels, 3, kernel_size=(1, 1), padding='same'),
+            nn.ReLU(),
+            model_unet
+        ]
+        model = nn.Sequential(*modules)
     else:
-        model = model_unet
+        modules = [
+            model_unet,
+            nn.Sigmoid()
+        ]
+        model = nn.Sequential(*modules)
 else:
-    model = unet(input_size=input_shape)
+    # model = unet(input_size=input_shape)
+    pass
 
 is_cuda = True
 if is_cuda:
     model = model.cuda()
 
 decimal_precision = 5
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters())
+criterion = nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate_scheduler(0))
 
 # model.compile(loss='binary_crossentropy',
 #               optimizer=Adam(lr=learning_rate_scheduler(0)),
@@ -185,40 +172,35 @@ optimizer = torch.optim.Adam(model.parameters())
 # checkpoint = ModelCheckpoint(filepath, monitor='f1', verbose=1, save_best_only=True, mode='max')
 # csv_logger = CSVLogger(csv_log_file, append=True, separator=';')
 # callbacks_list = [checkpoint, csv_logger]
-train_df=pd.read_csv('/home/parichya/Documents/sustainbench/data/crop_delineation/train_df.csv')
-val_df=pd.read_csv('/home/parichya/Documents/sustainbench/data/crop_delineation/val_df.csv')
-model=model.float()
-# Train loopa
-epochs=200
+# train_df = pd.read_csv('/home/parichya/Documents/sustainbench/data/crop_delineation/train_df.csv')
+# val_df = pd.read_csv('/home/parichya/Documents/sustainbench/data/crop_delineation/val_df.csv')
+# model = model.float()
+
+# Train loop
+epochs = 200
 for i in range(epochs):
-    # model.train()
+    model.train()
     epoch_train_acc = []
     epoch_train_loss = []
     epoch_dice = []
-    for x, y_true in (train_loader):
+    for x, y_true in train_loader:
         if is_cuda:
             x = x.cuda()
             y_true = y_true.cuda()
-        # print(x.shape)
+
         output = model(x.float())
+        output = torch.squeeze(output)
 
-        y_true=y_true[:,0,:,:]
+        y_true = y_true[:, 0, :, :]
 
-        loss = criterion(torch.squeeze(output), y_true)
+        loss = criterion(output, y_true)
         epoch_train_loss.append(loss.item())
-        # output = (output > 0.5).double()
-        # correct = (output.reshape(-1, 1) == y_true.reshape(-1, 1)).sum()
-        # epoch_train_acc.append((correct/y_true.reshape(-1, 1).shape[0]).item())
-        # print((correct/y_true.shape[0]))
 
-        # print("Dice score:", get_metric(y_true.reshape(-1, 1),output.reshape(-1, 1)))
-        dicee, ac = get_metric(y_true.reshape(-1, 1),output.reshape(-1, 1), binarized=False)
-        epoch_train_acc.append(ac)
-        epoch_dice.append(dicee)
-        # avg_train_acc = np.round(sum(epoch_train_acc) / len(epoch_train_acc), decimal_precision)
-        # avg_train_loss = np.round(sum(epoch_train_loss) / len(epoch_train_loss), decimal_precision)
-        # avg_dice = np.round(sum(epoch_dice) / len(epoch_dice), decimal_precision)
-        # print(f"Batch Train Accuracy: {avg_train_acc}, Batch Dice Score: {avg_dice}, Batch Loss: {avg_train_loss}", end="\n")
+        results, resultsstr = dataset.eval(output.detach().cpu().numpy(), y_true.detach().cpu().numpy(), metadata=None)
+        f1, acc, precision_recall = results
+        print(resultsstr)
+        epoch_train_acc.append(acc)
+        epoch_dice.append(f1)
 
         optimizer.zero_grad()
         loss.backward()
@@ -229,8 +211,6 @@ for i in range(epochs):
                                 'optimizer_state_dict': optimizer.state_dict(),
                 }
     torch.save(checkpoint, os.path.join(checkpoint_path, f"epoch{i}.checkpoint.pth.tar"))
-    # save_checkpoint(checkpoint, opts['checkpoint_path'], opts['classifier'])
-
 
     avg_train_acc = np.round(sum(epoch_train_acc) / len(epoch_train_acc), decimal_precision)
     avg_train_loss = np.round(sum(epoch_train_loss) / len(epoch_train_loss), decimal_precision)
@@ -238,26 +218,25 @@ for i in range(epochs):
     print(f"Epoch [{i + 1}/'{epochs}'] Average Train Accuracy: {avg_train_acc},Avergae Dice Score: {avg_dice_score}, Average Train Loss: {avg_train_loss}")
 
     #VALIDATION
-
-    # classifier.eval()
+    model.eval()
     epoch_val_acc = []
     epoch_val_loss = []
     epoch_val_dice = []
-    for x, y in (val_loader):
-
-        # y_true.extend(list(map(int, y.reshape(-1, 1))))
+    for x, y in val_loader:
         with torch.no_grad():
             if is_cuda:
-                x = x.to("cuda")
-                y = y.to("cuda")
-
-            y=y[:,0,:,:]
+                x = x.cuda()
+                y = y.cuda()
             output = model(x.float())
-            loss = criterion(torch.squeeze(output), y)
+            output = torch.squeeze(output)
+            y = y[:, 0, :, :]
+            loss = criterion(output, y)
             epoch_val_loss.append(loss.item())
-            d, acc = get_metric(y.reshape(-1, 1),output.reshape(-1, 1), binarized=False)
+            results, resultsstr = dataset.eval(output.detach().cpu().numpy(), y_true.detach().cpu().numpy(),
+                                               metadata=None)
+            f1, acc, precision_recall = results
             epoch_val_acc.append(acc)
-            epoch_val_dice.append(d)
+            epoch_val_dice.append(f1)
 
 
     # val_accuracy, val_precision, val_recall, val_f1, val_iou = get_metric(y_true, y_pred)

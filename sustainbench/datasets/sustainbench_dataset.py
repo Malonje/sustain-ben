@@ -59,7 +59,7 @@ class SustainBenchDataset:
         """
         raise NotImplementedError
 
-    def get_subset(self, split, frac=1.0, transform= None, preprocess_fn=False):
+    def get_subset(self, split, frac=1.0, transform=None, preprocess_fn=False):
         """
         Args:
             - split (str): Split identifier, e.g., 'train', 'val', 'test'.
@@ -427,7 +427,7 @@ class SustainBenchDataset:
 
 
 class SustainBenchSubset(SustainBenchDataset):
-    def __init__(self, dataset, indices, transform, preprocess_fn):
+    def __init__(self, dataset, indices, transform, preprocess_fn=False):
         """
         This acts like torch.utils.data.Subset, but on SustainBenchDatasets.
         We pass in transform explicitly because it can potentially vary at
@@ -449,19 +449,14 @@ class SustainBenchSubset(SustainBenchDataset):
         x, y, metadata = self.dataset[self.indices[idx]]
         # print(metadata)
         if self.transform is not None:
-
             if self.preprocess_fn:
-
-                x = transforms.ToTensor()(x)
-                x = torch.permute(x, (1,2,0))
-                # x = np.moveaxis(x, 0, -1)
-                x = self.transform(x)
-                x = torch.permute(x, (2,0,1))
-                y = transforms.ToTensor()(y)
+                x = np.array(x)
+                y = np.array(y)
+                x = self.transform(image=x)['image']
+                y = y.transpose(2, 0, 1).astype('float32') / 255
             else:
                 x = self.transform(x)
                 y = self.transform(y)
-            # print(y)
         return x, y
 
     def __len__(self):
