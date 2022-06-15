@@ -214,8 +214,8 @@ for i in range(epochs):
 
     avg_train_acc = np.round(sum(epoch_train_acc) / len(epoch_train_acc), decimal_precision)
     avg_train_loss = np.round(sum(epoch_train_loss) / len(epoch_train_loss), decimal_precision)
-    avg_dice_score= np.round(sum(epoch_dice) / len(epoch_dice), decimal_precision)
-    print(f"Epoch [{i + 1}/'{epochs}'] Average Train Accuracy: {avg_train_acc},Avergae Dice Score: {avg_dice_score}, Average Train Loss: {avg_train_loss}")
+    avg_train_dice_score = np.round(sum(epoch_dice) / len(epoch_dice), decimal_precision)
+    print(f"Epoch [{i + 1}/'{epochs}'] Average Train Accuracy: {avg_train_acc},Avergae Dice Score: {avg_train_dice_score}, Average Train Loss: {avg_train_loss}")
 
     #VALIDATION
     model.eval()
@@ -232,8 +232,7 @@ for i in range(epochs):
             y = y[:, 0, :, :]
             loss = criterion(output, y)
             epoch_val_loss.append(loss.item())
-            results, resultsstr = dataset.eval(output.detach().cpu().numpy(), y_true.detach().cpu().numpy(),
-                                               metadata=None)
+            results, resultsstr = dataset.eval(output.detach().cpu().numpy(), y.detach().cpu().numpy(), metadata=None)
             f1, acc, precision_recall = results
             epoch_val_acc.append(acc)
             epoch_val_dice.append(f1)
@@ -242,15 +241,15 @@ for i in range(epochs):
     # val_accuracy, val_precision, val_recall, val_f1, val_iou = get_metric(y_true, y_pred)
     avg_val_acc = np.round(sum(epoch_val_acc) / len(epoch_val_acc), decimal_precision)
     avg_val_loss = np.round(sum(epoch_val_loss) / len(epoch_val_loss), decimal_precision)
-    avg_dice_score= np.round(sum(epoch_val_dice) / len(epoch_val_dice), decimal_precision)
-    print(f"\t==> Average Val. Accuracy: {avg_val_acc}, Average Val. Dice. : {avg_dice_score}, Average Val. loss: {avg_val_loss}")
+    avg_val_dice_score = np.round(sum(epoch_val_dice) / len(epoch_val_dice), decimal_precision)
+    print(f"\t==> Average Val. Accuracy: {avg_val_acc}, Average Val. Dice. : {avg_val_dice_score}, Average Val. loss: {avg_val_loss}")
 
     logger.log({
         f"Average Train Accuracy": avg_train_acc,
-        f"Avergae Dice Score" : avg_dice_score,
+        f"Avergae Dice Score" : avg_train_dice_score,
         f"Average Train Loss" : avg_train_loss,
         f"Average Val Train Accuracy" : avg_val_acc,
-        f"Average Val Dice Score" : avg_dice_score,
+        f"Average Val Dice Score" : avg_val_dice_score,
         f"Average Val Loss" : avg_val_loss,
 
     })
