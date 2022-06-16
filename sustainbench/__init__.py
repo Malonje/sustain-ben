@@ -6,6 +6,7 @@ benchmark_datasets = [
     'fmow',
     'africa_crop_type_mapping',
     'crop_seg',
+    'crop_yield',
 ]
 
 additional_datasets = [
