@@ -18,10 +18,7 @@ dataset = get_dataset(dataset='crop_yield')
 checkpoint_path='/home/parichya/Documents/predict_result/'
 
 run_name = logger.init(project='crop_prediction', reinit=True)
-def crop_yield_metrics(y_true, y_pred):
 
-
-    return RMSE
 # Get the training set
 # cleaned_data_path="data/img_output",
 # yield_data_path="data/yield_data.csv",
