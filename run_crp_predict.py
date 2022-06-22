@@ -12,7 +12,7 @@ import numpy as np
 from pathlib import Path
 from sklearn.metrics import r2_score
 
-dataset = get_dataset(dataset='crop_yield')
+
 
 
 checkpoint_path='/home/parichya/Documents/predict_result/'
@@ -39,7 +39,7 @@ run_name = logger.init(project='crop_prediction', reinit=True)
 # )
 
 
-
+dataset = get_dataset(dataset='crop_yield')
 train_data = dataset.get_subset('train')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
 val_data   = dataset.get_subset('val')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
 batch_size=32
@@ -53,7 +53,7 @@ train_steps=25000
 batch_size=32
 starter_learning_rate=1e-3
 weight_decay=1
-l1_weight=0
+l1_weight=1
 patience=10
 use_gp=False
 sigma=1
@@ -113,6 +113,7 @@ if patience is not None:
     epochs_without_improvement = 0
 
 for epoch in range(num_epochs):
+    print(f"Epoch [{epoch + 1}/'{num_epochs}']" )
     model.train()
 
     # running train and val scores are only for printing out
@@ -120,22 +121,24 @@ for epoch in range(num_epochs):
     running_train_scores = defaultdict(list)
 
     for train_x, train_y in train_loader:
+        optimizer.zero_grad()
         if is_cuda:
             train_x = train_x.cuda()
             train_y = train_y.cuda()
 
         train_x=torch.permute(train_x, (0,3,1,2))
         # print(train_y.min())
-        optimizer.zero_grad()
+
         train_x=train_x.float()
         train_y=train_y.float()
-        pred_y = model(train_x.float())
+        pred_y = model(train_x)
         pred_y=np.squeeze(pred_y)
         # print('pred:',(pred_y).dtype)
         # print('y:',(train_y).dtype)
         loss, running_train_scores = l1_l2_loss(
             pred_y, train_y, l1_weight, running_train_scores
         )
+
         loss.backward()
         optimizer.step()
 
@@ -154,8 +157,14 @@ for epoch in range(num_epochs):
         )
 
     running_val_scores = defaultdict(list)
+    checkpoint = {
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                }
+    torch.save(checkpoint, os.path.join(checkpoint_path, f"epoch{epoch+1}.checkpoint.pth.tar"))
     model.eval()
-    print(f"Epoch [{epoch + 1}/'{num_epochs}']" )
+
+
     for (val_x,val_y,) in val_loader:
         # print(val_x.min())
         with torch.no_grad():
