@@ -219,3 +219,4 @@ best-unet-sentinel/
 model_weights/*
 data/
 wandb/
+/model_weights/
