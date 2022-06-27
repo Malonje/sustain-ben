@@ -163,7 +163,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             split_df = newd
             self.grid_id = split_df['grid_id'].values
         else:
-            split_df = pd.read_csv(os.path.join(self.root_dir, self._country, 'cauvery_dataset.csv'))
+            split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv'))
             split_df['id'] = split_df['UNIQUE_ID']
             split_df['partition'] = split_df['SPLIT'].apply(lambda split: partition_to_idx[split])
 
