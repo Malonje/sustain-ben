@@ -133,7 +133,10 @@ class CropTypeMappingDataset(SustainBenchDataset):
         self._normalize = normalize
 
         self._version = version
-        self._data_dir = self.initialize_data_dir(root_dir, download)
+        if split_scheme == "cauvery":
+            self._data_dir = root_dir
+        else:
+            self._data_dir = self.initialize_data_dir(root_dir, download)
 
         self._split_dict = {'train': 0, 'val': 1, 'test': 2}
         self._split_names = {'train': 'Train', 'val': 'Validation', 'test': 'Test'}

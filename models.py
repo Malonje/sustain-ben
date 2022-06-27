@@ -22,6 +22,7 @@ import numpy as np
 
 from constants import *
 from modelling.unet3d import UNet3D
+from util import get_num_bands
 
 # TODO: figure out how to decompose this
 
@@ -51,22 +52,28 @@ def make_UNet3D_model_pretrained(n_class, n_channel, timesteps, dropout):
 
     model = UNet3D(n_channel, n_class, timesteps, dropout)
     model = model.cuda()
-    for module, param in zip(model.center_out.modules(), model.center_out.parameters()):
+    for module, param in zip(model.en3.modules(), model.en3.parameters()):
         param.requires_grad = False
-    for module, param in zip(model.dc4.modules(), model.dc4.parameters()):
+    for module, param in zip(model.en4.modules(), model.en4.parameters()):
         param.requires_grad = False
-    for module, param in zip(model.trans3.modules(), model.trans3.parameters()):
+    for module, param in zip(model.center_in.modules(), model.center_in.parameters()):
         param.requires_grad = False
-    for module, param in zip(model.dc3.modules(), model.dc3.parameters()):
-        param.requires_grad = False
-    for module, param in zip(model.final.modules(), model.final.parameters()):
-        param.requires_grad = False
-    for module, param in zip(model.fn.modules(), model.fn.parameters()):
-        param.requires_grad = False
-    for module, param in zip(model.logsoftmax.modules(), model.logsoftmax.parameters()):
-        param.requires_grad = False
-    for module, param in zip(model.logsoftmax.modules(), model.logsoftmax.parameters()):
-        param.requires_grad = False
+    # for module, param in zip(model.center_out.modules(), model.center_out.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.dc4.modules(), model.dc4.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.trans3.modules(), model.trans3.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.dc3.modules(), model.dc3.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.final.modules(), model.final.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.fn.modules(), model.fn.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.logsoftmax.modules(), model.logsoftmax.parameters()):
+    #     param.requires_grad = False
+    # for module, param in zip(model.logsoftmax.modules(), model.logsoftmax.parameters()):
+    #     param.requires_grad = False
 
     return model
 

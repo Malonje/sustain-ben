@@ -150,7 +150,8 @@ STDS = {'s1': {'ghana': np.array([3.57, 4.86, 5.60]),
             'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
 # OTHER PER COUNTRY CONSTANTS
-NUM_CLASSES = {'ghana': 4,
+NUM_CLASSES = {'cauvery': 2,
+              'ghana': 4,
                'southsudan': 4,
                'tanzania': 5,
                'germany': 17}

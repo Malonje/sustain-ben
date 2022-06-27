@@ -50,7 +50,10 @@ class CropSegmentationDataset(SustainBenchDataset):
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='official', oracle_training_set=False, seed=111, filled_mask=False, use_ood_val=False):
         self._version = version
-        self._data_dir = "data/crop_seg_v1.1/" # TODO: implementation only
+        if split_scheme == "cauvery":
+            self._data_dir = root_dir
+        else:
+            self._data_dir = "data/crop_seg_v1.1/" # TODO: implementation only
         # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
 
         self._split_dict = {'train': 0, 'val': 1, 'test': 2}
@@ -65,6 +68,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         if self._split_scheme == "cauvery":
             self.metadata = pd.read_csv(os.path.join(root_dir, "cauvery", 'cauvery_dataset.csv'))
             self.metadata['ids'] = self.metadata['UNIQUE_ID']
+            self.metadata['indices'] = self.metadata['UNIQUE_ID']
             self.metadata['split'] = self.metadata['SPLIT']
         else:
             self.metadata = pd.read_csv(self.root / 'clean_data.csv')
@@ -83,21 +87,22 @@ class CropSegmentationDataset(SustainBenchDataset):
                 id = self.metadata['ids'][split_mask]
             self._split_array[id] = self._split_dict[split]
 
+        self.full_idxs = self.metadata['indices']
+        if self.filled_mask:
+            if self._split_scheme == "cauvery":
+                self._y_array = np.asarray([os.path.join(self.data_dir, 'cauvery', 'masks', f'{self.metadata.iloc[y]["PLOT_ID"]}.npy') for y in self.full_idxs])
+            else:
+                self._y_array = np.asarray([self.root / 'masks_filled' / f'{y}.png' for y in self.full_idxs])
+        else:
+            self._y_array = np.asarray([self.root / 'masks' / f'{y}.png' for y in self.full_idxs])
+
+        self.metadata['y'] = self._y_array
+        self._y_size = 1
 
         if self._split_scheme == "cauvery":
-            self._y_array = np.asarray([0 for y in self.metadata['ids']])
-            self._y_size = 0
             self._metadata_fields = self.metadata.columns
             self._metadata_array = self.metadata
         else:
-            self.full_idxs = self.metadata['indices']
-            if self.filled_mask:
-                self._y_array = np.asarray([self.root / 'masks_filled' / f'{y}.png' for y in self.full_idxs])
-            else:
-                self._y_array = np.asarray([self.root / 'masks' / f'{y}.png' for y in self.full_idxs])
-
-            self.metadata['y'] = self._y_array
-            self._y_size = 1
             self._metadata_fields = ['y', 'max_lat', 'max_lon', 'min_lat', 'min_lon']
             self._metadata_array = self.metadata[self._metadata_fields].to_numpy()
 
@@ -108,7 +113,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         if self._split_scheme == "cauvery":
-            image = np.load(os.path.join(self.data_dir, "cauvery", 'images', f'cauvery_{idx:06}.npz'))['s2']
+            image = np.load(os.path.join(self.data_dir, "cauvery", 'npy', f'cauvery_{idx:06}.npz'))['s2']
             # Conversion to RGB and setting pixel value range [0-255]
             image = image[[3, 2, 1], :, :]
             image[0, :, :] = (image[0, :, ] / np.max(image[0, :, ])) * 255
@@ -125,7 +130,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         if self._split_scheme == "cauvery":
-            return None
+            return np.load(path)
         img = Image.open(path).convert('RGB')
         return img
 
