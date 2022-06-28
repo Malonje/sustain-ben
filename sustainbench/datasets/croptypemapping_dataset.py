@@ -19,13 +19,19 @@ BANDS = {'s1': {'VV': 0, 'VH': 1, 'RATIO': 2},
                 '4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}},
          'planet': {'4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}}}
 
-MEANS = {'s1': {'ghana': torch.Tensor([-10.50, -17.24, 1.17]),
+MEANS = {'l8': {'cauvery': torch.Tensor([12368.1361551, 12661.92114163, 13650.40757402, 13527.14502986,
+                                         19340.70235415, 14114.5518405, 11896.20883162, 29226.3843278])},
+         's1': {'cauvery': torch.Tensor([6.28422240e+04, 6.32034097e+04, 3.60242752e+01]),
+                'ghana': torch.Tensor([-10.50, -17.24, 1.17]),
                 'southsudan': torch.Tensor([-9.02, -15.26, 1.15])},
-         's2': {'ghana': torch.Tensor(
+         's2': {'cauvery': torch.Tensor([444.24931557, 457.38388575, 436.65186128, 508.0436634, 627.0239963,
+                                         680.004681, 670.04099671, 703.3274434, 436.3003278, 331.22561816]),  # DUMMY
+                'ghana': torch.Tensor(
              [2620.00, 2519.89, 2630.31, 2739.81, 3225.22, 3562.64, 3356.57, 3788.05, 2915.40, 2102.65]),
                 'southsudan': torch.Tensor(
                     [2119.15, 2061.95, 2127.71, 2277.60, 2784.21, 3088.40, 2939.33, 3308.03, 2597.14, 1834.81])},
-         'planet': {'ghana': torch.Tensor([1264.81, 1255.25, 1271.10, 2033.22]),
+         'planet': {'cauvery': torch.Tensor([189.38657473, 218.87043081, 247.32755279, 479.41628529]),  # DUMMY
+                    'ghana': torch.Tensor([1264.81, 1255.25, 1271.10, 2033.22]),
                     'southsudan': torch.Tensor([1091.30, 1092.23, 1029.28, 2137.77])},
          's2_cldfltr': {'ghana': torch.Tensor(
              [1362.68, 1317.62, 1410.74, 1580.05, 2066.06, 2373.60, 2254.70, 2629.11, 2597.50, 1818.43]),
@@ -33,13 +39,19 @@ MEANS = {'s1': {'ghana': torch.Tensor([-10.50, -17.24, 1.17]),
                             [1137.58, 1127.62, 1173.28, 1341.70, 1877.70, 2180.27, 2072.11, 2427.68, 2308.98,
                              1544.26])}}
 
-STDS = {'s1': {'ghana': torch.Tensor([3.57, 4.86, 5.60]),
+STDS = {'l8': {'cauvery': torch.Tensor([9909.46258226, 9772.88653258, 9093.53284106, 9096.19521172,
+                                        8922.29167776, 6468.6509666,  5430.69077713, 19781.63175576])},
+        's1': {'cauvery': torch.Tensor([1.29914865e+04, 1.21026555e+04, 7.12003524e+00]),
+               'ghana': torch.Tensor([3.57, 4.86, 5.60]),
                'southsudan': torch.Tensor([4.49, 6.68, 21.75])},
-        's2': {'ghana': torch.Tensor(
+        's2': {'cauvery': torch.Tensor([1652.44922717, 1504.62790188, 1444.78959425, 1554.34698307, 1656.84349257,
+                                        1727.76967515, 1717.28851599, 1757.27593784, 1109.57370268, 879.75099205]),  # DUMMY
+               'ghana': torch.Tensor(
             [2171.62, 2085.69, 2174.37, 2084.56, 2058.97, 2117.31, 1988.70, 2099.78, 1209.48, 918.19]),
                'southsudan': torch.Tensor(
                    [2113.41, 2026.64, 2126.10, 2093.35, 2066.81, 2114.85, 2049.70, 2111.51, 1320.97, 1029.58])},
-        'planet': {'ghana': torch.Tensor([602.51, 598.66, 637.06, 966.27]),
+        'planet': {'cauvery': torch.Tensor([1.66349306e+04, 1.66781339e+04, 9.51789817e+00, 9.51789817e+00]),  # DUMMY
+                   'ghana': torch.Tensor([602.51, 598.66, 637.06, 966.27]),
                    'southsudan': torch.Tensor([526.06, 517.05, 543.74, 1022.14])},
         's2_cldfltr': {
             'ghana': torch.Tensor([511.19, 495.87, 591.44, 590.27, 745.81, 882.05, 811.14, 959.09, 964.64, 809.53]),
@@ -225,13 +237,26 @@ class CropTypeMappingDataset(SustainBenchDataset):
             loc_id = "001603"  # random one
         images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
 
-        s1 = images['s1'].astype(np.int64)
-        s2 = images['s2'].astype(np.int64)
-        planet = images['planet'].astype(np.int64)
+        temp = images['s1'].astype(np.int64)
+        s1 = []
+        for t in range(temp.shape[0]):
+            if np.any(s1[t]):
+                s1.append(s1[t])
+        temp = images['s2'].astype(np.int64)
+        s2 = []
+        for t in range(temp.shape[0]):
+            if np.any(s2[t]):
+                s2.append(s2[t])
+        temp = images['planet'].astype(np.int64)
+        planet = []
+        for t in range(temp.shape[0]):
+            if np.any(planet[t]):
+                planet.append(planet[t])
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
         planet = torch.from_numpy(planet.astype(np.int32))
+        print(s1.shape, s2.shape, planet.shape)
 
         if self.resize_planet:
             planet = planet.permute(3, 0, 1, 2)
