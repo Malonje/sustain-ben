@@ -225,9 +225,9 @@ class CropTypeMappingDataset(SustainBenchDataset):
             loc_id = "001603"  # random one
         images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
 
-        s1 = images['s1']
-        s2 = images['s2']
-        planet = images['planet']
+        s1 = images['s1'].astype(np.int64)
+        s2 = images['s2'].astype(np.int64)
+        planet = images['planet'].astype(np.int64)
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
