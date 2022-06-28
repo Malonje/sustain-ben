@@ -15,7 +15,7 @@ def get_dataset(dataset, version=None, **dataset_kwargs):
         version = str(version)
 
     if dataset not in sustainbench.supported_datasets:
-        raise ValueError(f'The dataset {dataset} is not recognized. Must be one of {sustainbench.supported_datasets}.')
+        raise ValueError(f'The dataset {dataset} is not recognized. Must be one of {sustainbench.suppobrted_datasets}.')
 
     if dataset == 'poverty':
         if version == '1.0':

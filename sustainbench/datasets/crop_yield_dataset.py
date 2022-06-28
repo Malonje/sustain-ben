@@ -72,12 +72,20 @@ class CropYieldDataset(SustainBenchDataset):
         self._split_names = {'train': 'Train', 'val': 'Val', 'test': 'Test'}
 
         self._split_scheme = split_scheme
-        if self._split_scheme not in ['official', 'usa', 'argentina', 'brazil']:
+        if self._split_scheme not in ['official', 'usa', 'argentina', 'brazil','cauvery']:
             raise ValueError(f'Split scheme {self._split_scheme} not recognized')
         if self._split_scheme == 'official':
             self._country = 'usa'
+        if self._split_scheme in ['cauvery']:
+            self._country = 'cauvery'
         else:
             self._country = self._split_scheme
+
+        if self.split_scheme=='cauvery':
+            train_data, train_labels, train_years = self._load_split(split='train', country=self._country)
+            val_data, val_labels, val_years = self._load_split(split='val', country=self._country)
+            test_data, test_labels, test_years = self._load_split(split='test', country=self._country)
+
 
         train_data, train_labels, train_years, train_keys = self._load_split(split='train', country=self._country)
         val_data, val_labels, val_years, val_keys = self._load_split(split='val', country=self._country)
@@ -89,6 +97,15 @@ class CropYieldDataset(SustainBenchDataset):
         
         self._histograms = np.concatenate([train_data, val_data, test_data])
         self._split_array = np.concatenate([train_mask, val_mask, test_mask])
+
+        if self.split_scheme=='cauvery':
+            self.metadata = pd.DataFrame(data={
+            "year": np.concatenate([train_years, val_years, test_years]),
+            "y": np.concatenate([train_labels, val_labels, test_labels]),
+            })
+            self._y_array = self.metadata['y'].to_numpy()
+            self._y_size = 1
+            super().__init__(root_dir, download, split_scheme)
 
         self.metadata = pd.DataFrame(data={
             "key": np.concatenate([train_keys, val_keys, test_keys]),
@@ -138,16 +155,28 @@ class CropYieldDataset(SustainBenchDataset):
         country_data_dir = os.path.join(self._data_dir, country)
         if not os.path.isdir(country_data_dir):
             raise FileNotFoundError(f"Data directory for country {country} not found at {country_data_dir}")
-        
-        data_file = os.path.join(country_data_dir, f'{fname}_hists.npz') 
-        labels_file = os.path.join(country_data_dir, f'{fname}_yields.npz')
-        years_file = os.path.join(country_data_dir, f'{fname}_years.npz')
-        keys_file = os.path.join(country_data_dir, f'{fname}_keys.npz')
 
+
+        data_file = os.path.join(country_data_dir, f'{fname}_hists.npz')
         data = np.load(data_file)['data']
-        labels = np.load(labels_file)['data']
-        years = np.load(years_file)['data'].astype(int)
-        keys = np.load(keys_file)['data']
+        if self.split_scheme=='cauvery':
+            df=pd.read_csv('/home/parichya/Documents/cauvery/cauvery_dataset.csv')
+            idx_ = df.index[df['split'] == fname].tolist()
+            data=data[idx_]
+            # labels_file = os.path.join()#path to csv)
+            labels = df['YIELD'].to_numpy()[idx_]
+            years = df['YEAR'].to_numpy()[idx_]
+            return data, labels, years
+
+        else:
+
+            labels_file = os.path.join(country_data_dir, f'{fname}_yields.npz')
+            years_file = os.path.join(country_data_dir, f'{fname}_years.npz')
+            keys_file = os.path.join(country_data_dir, f'{fname}_keys.npz')
+
+            labels = np.load(labels_file)['data']
+            years = np.load(years_file)['data'].astype(int)
+            keys = np.load(keys_file)['data']
         
         return data, labels, years, keys
     
