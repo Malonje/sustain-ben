@@ -120,7 +120,7 @@ def main(args):
     checkpoint_path = args.cropseg_weights
     # Get the training set
     dataset = get_dataset(dataset='crop_seg', filled_mask=True, download=True,
-                          split_scheme="cauvery", root_dir=PATH_TO_CAUVERY_IMAGES)
+                          split_scheme="cauvery", root_dir=args.path_to_cauvery_images)
     test_data = dataset.get_subset('test', transform=get_preprocessing(preprocess_input), preprocess_fn=True)
 
     # Prepare the standard data loader

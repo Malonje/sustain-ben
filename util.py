@@ -375,14 +375,17 @@ def get_train_parser():
                         help="Number of workers to use for pulling data",
                         default=8)
     # TODO: find correct string name
+    parser.add_argument('--path_to_cauvery_images', type=str,
+                        help="PATH_TO_CAUVERY_IMAGES",
+                        default='data/')
     parser.add_argument('--cropseg_weights', type=str,
-                        help="Cuda or CPU",
+                        help="Pretrained weights for Field Delineation",
                         default='../model_weights/cropseg_weights.pth.tar')
     parser.add_argument('--croptype_weights', type=str,
-                        help="Cuda or CPU",
+                        help="Pretrained weights for Crop Type Mapping",
                         default='../model_weights/croptype_weights.pth.tar')
     parser.add_argument('--cropyield_weights', type=str,
-                        help="Cuda or CPU",
+                        help="Pretrained weights for Yield Prediction",
                         default='../model_weights/cropyield_weights.pth.tar')
     parser.add_argument('--device', type=str,
                         help="Cuda or CPU",

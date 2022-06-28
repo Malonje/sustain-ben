@@ -7,8 +7,6 @@ import os
 Constants for file paths
 """
 
-PATH_TO_CAUVERY_IMAGES = '/home/parichya/Documents/'  # TODO
-
 SPLITS = ['train', 'val', 'test']
 NON_DL_MODELS = ['logreg', 'random_forest']
 DL_MODELS = ['bidir_clstm', 'fcn', 'unet', 'fcn_crnn', 'mi_clstm', 'unet3d', 'only_clstm_mi']
