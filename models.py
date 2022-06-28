@@ -97,7 +97,13 @@ def get_model(model_name, **kwargs):
             model = make_UNet3D_model(n_class=NUM_CLASSES[kwargs.get('country')], n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
         else:
             model = make_UNet3D_model_pretrained(n_class=NUM_CLASSES[kwargs.get('country')], n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
-            model.load_state_dict(torch.load(pretrained_model_path))
+            pretrained_dict = torch.load(pretrained_model_path)
+            state_dict = model.state_dict()
+            for k in state_dict:
+                if "final" in k:
+                    break
+                state_dict[k] = pretrained_dict[k]
+            model.load_state_dict(state_dict)
 
     else:
         raise ValueError(f"Model {model_name} unsupported, check `model_name` arg") 
