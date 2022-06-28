@@ -6,7 +6,7 @@ Script for training and evaluating a model
 from cmath import nan
 import os
 import loss_fns
-import models
+import croptype_models
 import datetime
 import torch
 # import datasets
@@ -280,7 +280,7 @@ def main(args):
     dataloaders = dataset
 
     # load in model
-    model = models.get_model(**vars(args))
+    model = croptype_models.get_model(**vars(args))
     if args.model_name in DL_MODELS:
         print('Total trainable model parameters: {}'.format(
             sum(p.numel() for p in model.parameters() if p.requires_grad)))
