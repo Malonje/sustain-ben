@@ -240,18 +240,18 @@ class CropTypeMappingDataset(SustainBenchDataset):
         temp = images['s1'].astype(np.int64)
         s1 = []
         for t in range(temp.shape[0]):
-            if np.any(s1[t]):
-                s1.append(s1[t])
+            if np.any(temp[t]):
+                s1.append(temp[t])
         temp = images['s2'].astype(np.int64)
         s2 = []
         for t in range(temp.shape[0]):
-            if np.any(s2[t]):
-                s2.append(s2[t])
+            if np.any(temp[t]):
+                s2.append(temp[t])
         temp = images['planet'].astype(np.int64)
         planet = []
         for t in range(temp.shape[0]):
-            if np.any(planet[t]):
-                planet.append(planet[t])
+            if np.any(temp[t]):
+                planet.append(temp[t])
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
