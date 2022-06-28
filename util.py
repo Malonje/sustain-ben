@@ -381,7 +381,7 @@ def get_train_parser():
     parser.add_argument('--croptype_weights', type=str,
                         help="Cuda or CPU",
                         default='../model_weights/croptype_weights.pth.tar')
-    parser.add_argument('--cropyied_weights', type=str,
+    parser.add_argument('--cropyield_weights', type=str,
                         help="Cuda or CPU",
                         default='../model_weights/cropyield_weights.pth.tar')
     parser.add_argument('--device', type=str,
