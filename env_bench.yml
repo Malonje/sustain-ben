@@ -17,8 +17,6 @@ channels:
   - defaults
 dependencies:
   - python=3.9.*            # only supported by TensorFlow 2.5+
-  # - cpuonly                 # from `pytorch` channel, to force only CPU
-  # - cudatoolkit=10.2        # from `pytorch` channel, only needed if using GPU with CUDA 10.2
   - cudatoolkit=11.1        # from `nvidia` channel, only needed if using GPU with CUDA 11.1
   - flake8=3.9.*
   - grpcio=1.34.*             # required for TensorFlow 2.5 compatibility
@@ -39,3 +37,4 @@ dependencies:
     - segmentation-models-pytorch
     - albumentations
     - wandb
+    - visdom

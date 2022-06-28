@@ -6,9 +6,7 @@ import util
 import predict_croptype
 import predict_cropseg
 
-
-PATH_TO_CAUVERY_IMAGES = None  # TODO
-PATH_TO_CROP_TYPE_MAPPING_WEIGHTS = None  # TODO
+from constants import *
 
 
 def run(args):

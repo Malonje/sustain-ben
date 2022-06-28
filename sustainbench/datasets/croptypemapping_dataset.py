@@ -133,7 +133,10 @@ class CropTypeMappingDataset(SustainBenchDataset):
         self._normalize = normalize
 
         self._version = version
-        self._data_dir = self.initialize_data_dir(root_dir, download)
+        if split_scheme == "cauvery":
+            self._data_dir = root_dir
+        else:
+            self._data_dir = self.initialize_data_dir(root_dir, download)
 
         self._split_dict = {'train': 0, 'val': 1, 'test': 2}
         self._split_names = {'train': 'Train', 'val': 'Validation', 'test': 'Test'}
@@ -160,7 +163,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             split_df = newd
             self.grid_id = split_df['grid_id'].values
         else:
-            split_df = pd.read_csv(os.path.join(self.root_dir, self._country, 'cauvery_dataset.csv'))
+            split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv'))
             split_df['id'] = split_df['UNIQUE_ID']
             split_df['partition'] = split_df['SPLIT'].apply(lambda split: partition_to_idx[split])
 
@@ -222,9 +225,9 @@ class CropTypeMappingDataset(SustainBenchDataset):
             loc_id = "001603"  # random one
         images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
 
-        s1 = images['s1']
-        s2 = images['s2']
-        planet = images['planet']
+        s1 = images['s1'].astype(np.int64)
+        s2 = images['s2'].astype(np.int64)
+        planet = images['planet'].astype(np.int64)
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))

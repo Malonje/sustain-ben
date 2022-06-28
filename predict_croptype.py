@@ -9,7 +9,7 @@ import loss_fns
 import models
 import datetime
 import torch
-import datasets
+# import datasets
 import metrics
 import util
 import numpy as np
@@ -279,7 +279,7 @@ def main(args):
     # load in data generator
 
     dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=PATH_TO_CAUVERY_IMAGES)
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images)
 
     dataloaders = dataset
 

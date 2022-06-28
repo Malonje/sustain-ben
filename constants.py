@@ -7,8 +7,6 @@ import os
 Constants for file paths
 """
 
-PATH_TO_CAUVERY_IMAGES = 'data'  # TODO
-
 SPLITS = ['train', 'val', 'test']
 NON_DL_MODELS = ['logreg', 'random_forest']
 DL_MODELS = ['bidir_clstm', 'fcn', 'unet', 'fcn_crnn', 'mi_clstm', 'unet3d', 'only_clstm_mi']
@@ -150,12 +148,14 @@ STDS = {'s1': {'ghana': np.array([3.57, 4.86, 5.60]),
             'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
 # OTHER PER COUNTRY CONSTANTS
-NUM_CLASSES = {'ghana': 4,
+NUM_CLASSES = {'cauvery': 3,
+              'ghana': 4,
                'southsudan': 4,
                'tanzania': 5,
                'germany': 17}
 
-GRID_SIZE = {'ghana': 32,
+GRID_SIZE = {'cauvery': 32,
+             'ghana': 32,
              'southsudan': 32,
              'tanzania': 32,
              'germany': 48}
@@ -165,12 +165,14 @@ GRID_SIZE = {'ghana': 32,
 #               'tanzania': 64,
 #               'germany': 48 }
 
-CM_LABELS = {'ghana': [0, 1, 2, 3],
+CM_LABELS = {'cauvery': [0, 1, 2],
+             'ghana': [0, 1, 2, 3],
              'southsudan': [0, 1, 2, 3],
              'tanzania': [0, 1, 2, 3, 4],
              'germany': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]}
 
-CROPS = {'ghana': ['groundnut', 'maize', 'rice', 'soya bean'],
+CROPS = {'cauvery': ['unknown', 'paddy', 'non-paddy'],
+         'ghana': ['groundnut', 'maize', 'rice', 'soya bean'],
          'southsudan': ['sorghum', 'maize', 'rice', 'groundnut'],
          'tanzania': ['maize', 'beans', 'sunflower', 'chickpeas', 'wheat'],
          'germany': ['sugar beet', 'summer oat', 'meadow', 'rapeseed', 'hop', 'winter spelt',

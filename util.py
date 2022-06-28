@@ -299,11 +299,37 @@ def fill_NA(X):
     return (X_noNA)
 
 
+def get_num_bands(kwargs):
+    num_bands = 0
+    added_doy = 0
+    added_clouds = 0
+    added_indices = 0
+
+    if kwargs.get('include_doy'):
+        added_doy = 1
+    if kwargs.get('include_clouds') and kwargs.get('use_s2'):
+        added_clouds = 1
+    if kwargs.get('include_indices') and (kwargs.get('use_s2') or kwargs.get('use_planet')):
+        added_indices = 2
+
+    num_bands = {'s1': 0, 's2': 0, 'planet': 0}
+
+    if kwargs.get('use_s1'):
+        num_bands['s1'] = S1_NUM_BANDS + added_doy
+    if kwargs.get('use_s2'):
+        num_bands['s2'] = kwargs.get('s2_num_bands') + added_doy + added_clouds + added_indices
+    if kwargs.get('use_planet'):
+        num_bands['planet'] = PLANET_NUM_BANDS + added_doy + added_indices
+
+    num_bands['all'] = num_bands['s1'] + num_bands['s2'] + num_bands['planet']
+    return num_bands
+
+
 def get_train_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str,
                         help="model's name",
-                        required=True)
+                        default='unet3d')
     parser.add_argument('--dataset', type=str,
                         help="Full or small?",
                         choices=('full', 'small'),
@@ -349,14 +375,17 @@ def get_train_parser():
                         help="Number of workers to use for pulling data",
                         default=8)
     # TODO: find correct string name
+    parser.add_argument('--path_to_cauvery_images', type=str,
+                        help="PATH_TO_CAUVERY_IMAGES",
+                        default='data/')
     parser.add_argument('--cropseg_weights', type=str,
-                        help="Cuda or CPU",
+                        help="Pretrained weights for Field Delineation",
                         default='../model_weights/cropseg_weights.pth.tar')
     parser.add_argument('--croptype_weights', type=str,
-                        help="Cuda or CPU",
+                        help="Pretrained weights for Crop Type Mapping",
                         default='../model_weights/croptype_weights.pth.tar')
-    parser.add_argument('--cropyied_weights', type=str,
-                        help="Cuda or CPU",
+    parser.add_argument('--cropyield_weights', type=str,
+                        help="Pretrained weights for Yield Prediction",
                         default='../model_weights/cropyield_weights.pth.tar')
     parser.add_argument('--device', type=str,
                         help="Cuda or CPU",
