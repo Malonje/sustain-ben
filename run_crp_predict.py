@@ -122,6 +122,7 @@ for epoch in range(num_epochs):
 
     for train_x, train_y in train_loader:
         optimizer.zero_grad()
+        print('train_X size:',train_x.shape)
         if is_cuda:
             train_x = train_x.cuda()
             train_y = train_y.cuda()

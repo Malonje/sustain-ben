@@ -448,6 +448,7 @@ class SustainBenchSubset(SustainBenchDataset):
     def __getitem__(self, idx):
         x, y, metadata = self.dataset[self.indices[idx]]
         # print(metadata)
+        # x= filter_timespan(x)
         if self.transform is not None:
             if self.preprocess_fn:
                 x = np.array(x)
@@ -461,6 +462,71 @@ class SustainBenchSubset(SustainBenchDataset):
 
     def __len__(self):
         return len(self.indices)
+
+    def filter_timespan(self,imcol,  bands=9):
+
+        indx=[]
+        for i in range(len(184)):
+            if np.any(imcol[i]):
+                indx.append(i)
+        imcol = imcol[indx[len(indx)-32:],:,:,:]
+
+        imcol = np.permute(imcol,(2,3,1,0))
+        imcol = np.reshape(32,32,10,32)
+        hist_im=_calculate_histogram(imcol)
+
+        #
+        # start_index = int(math.floor(start_day / composite_period)) * bands
+        # end_index = int(math.floor(end_day / composite_period)) * bands
+        #
+        # if end_index > imcol.shape[2]:
+        #     padding = np.zeros(
+        #         (imcol.shape[0], imcol.shape[1], end_index - imcol.shape[2])
+        #     )
+        #     imcol = np.concatenate((imcol, padding), axis=2)
+        return hist_im
+
+
+
+    def _calculate_histogram(imagecol, num_bins=32, bands=9, max_bin_val=4999, channels_first=True):
+
+        """
+        Given an image collection, turn it into a histogram.
+
+        Parameters
+        ----------
+        imcol: The image collection to be histogrammed
+        num_bins: int, default=32
+            The number of bins to use in the histogram.
+        bands: int, default=9
+            The number of bands per image. Default taken from the number of bands in the
+            MOD09A1 + the number of bands in the MYD11A2 datasets
+        max_bin_val: int, default=4999
+            The maximum value of the bins. The default is taken from the original repository;
+            note that the maximum pixel values from the MODIS datsets range from 16000 to
+            18000 depending on the band
+
+        Returns
+        ----------
+        A histogram for each band, of the band's pixel values. The output shape is
+        [num_bins, times, bands], where times is the number of unique timestamps in the
+        image collection.
+        """
+        bin_seq = np.linspace(1, max_bin_val, num_bins + 1)
+
+        hist = []
+        for im in np.split(imagecol, imagecol.shape[-1] / bands, axis=-1):
+            imhist = []
+            for i in range(im.shape[-1]):
+                density, _ = np.histogram(im[:, :, i], bin_seq, density=False)
+                # max() prevents divide by 0
+                imhist.append(density / max(1, density.sum()))
+            if channels_first:
+                hist.append(np.stack(imhist))
+            else:
+                hist.append(np.stack(imhist, axis=1))
+        return np.stack(hist, axis=1)
+
 
     @property
     def split_array(self):
