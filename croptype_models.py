@@ -156,7 +156,6 @@ class DateExtractor(nn.Module):
         pool_4 = self.pool_4(en4)
         center_in = self.center_in(pool_4)
         center_in = center_in.permute(0, 2, 1, 3, 4)
-        shape_num = final.shape[0:2]
         center_in = center_in.reshape(-1, np.prod(final.shape[2:]))
         center_in = self.dropout(center_in)
         timestep_features = self.features(center_in)

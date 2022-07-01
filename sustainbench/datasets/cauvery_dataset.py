@@ -144,25 +144,25 @@ class CauveryDataset(SustainBenchDataset):
         loc_id = f'{self.y_array[idx]:06d}'
         images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
 
-        temp = images['s1'].astype(np.int64)
-        s1 = []
-        for t in range(temp.shape[0]):
-            if np.any(temp[t]):
-                s1.append(temp[t])
-        temp = images['s2'].astype(np.int64)
-        s2 = []
-        for t in range(temp.shape[0]):
-            if np.any(temp[t]):
-                s2.append(temp[t])
-        temp = images['planet'].astype(np.int64)
-        planet = []
-        for t in range(temp.shape[0]):
-            if np.any(temp[t]):
-                planet.append(temp[t])
+        s1 = images['s1'].astype(np.int64)
+        # s1 = []
+        # for t in range(temp.shape[0]):
+        #     if np.any(temp[t]):
+        #         s1.append(temp[t])
+        s2 = images['s2'].astype(np.int64)
+        # s2 = []
+        # for t in range(temp.shape[0]):
+        #     if np.any(temp[t]):
+        #         s2.append(temp[t])
+        planet = images['planet'].astype(np.int64)
+        # planet = []
+        # for t in range(temp.shape[0]):
+        #     if np.any(temp[t]):
+        #         planet.append(temp[t])
 
-        s1 = np.asarray(s1)
-        s2 = np.asarray(s2)
-        planet = np.asarray(planet)
+        # s1 = np.asarray(s1)
+        # s2 = np.asarray(s2)
+        # planet = np.asarray(planet)
 
         mask = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['mask']
         coord = np.argwhere(mask > 0)
