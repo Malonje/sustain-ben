@@ -121,10 +121,9 @@ class CauveryDataset(SustainBenchDataset):
 
         self._split_array = split_df['partition'].values
 
-        self._y_array = torch.from_numpy(split_df['id'].values)
-        self._y_size = (1)
-
-        self._metadata_fields = ['PLOT_ID', 'SOWING_DAY', 'TRANSPLANTING_DAY', 'HARVESTING_DAY']
+        self._metadata_fields = ['id', 'PLOT_ID', 'SOWING_DAY', 'TRANSPLANTING_DAY', 'HARVESTING_DAY']
+        self._y_array = torch.from_numpy(split_df[self._metadata_fields].to_numpy())
+        self._y_size = len(self._y_array)
         self._metadata_array = torch.from_numpy(split_df[self._metadata_fields].to_numpy())
 
         super().__init__(root_dir, download, split_scheme)
@@ -141,7 +140,7 @@ class CauveryDataset(SustainBenchDataset):
         """
         Returns x for a given idx.
         """
-        loc_id = f'{self.y_array[idx]:06d}'
+        loc_id = f'{self.y_array[idx][0]:06d}'
         images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
 
         s1 = images['s1'].astype(np.int64)
@@ -149,7 +148,7 @@ class CauveryDataset(SustainBenchDataset):
         planet = images['planet'].astype(np.int64)
 
         mask = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
-        plot_id = self._metadata_array[idx][0]
+        plot_id = self._metadata_array[idx][1].item()
         mask = np.where(mask == plot_id, 1, 0)
         coord = np.argwhere(mask == 1)
         top_left_coord = np.min(coord, 0)
@@ -221,9 +220,9 @@ class CauveryDataset(SustainBenchDataset):
         """
         Returns x for a given idx.
         """
-        sowing = self._metadata_array[idx][1].item() - 1
-        transplanting = self._metadata_array[idx][2].item() - 1
-        harvesting = self._metadata_array[idx][3].item() - 1
+        sowing = self.y_array[idx][2].item() - 1
+        transplanting = self.y_array[idx][3].item() - 1
+        harvesting = self.y_array[idx][4].item() - 1
         return torch.Tensor([sowing, harvesting, transplanting])
 
     def metrics(self, y_true, y_pred):
