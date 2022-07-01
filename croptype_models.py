@@ -119,7 +119,7 @@ def get_model(model_name, **kwargs):
                     break
                 state_dict[k] = pretrained_dict[k]
             model.load_state_dict(state_dict)
-    if model_name == 'unet-fc':
+    elif model_name == 'unet-fc':
         num_bands = get_num_bands(kwargs)['all']
         model = make_UNetFC_model(n_class=3, n_channel=num_bands,
                                       timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
