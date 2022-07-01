@@ -117,7 +117,7 @@ class CauveryDataset(SustainBenchDataset):
 
         split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv'))
         split_df['id'] = split_df['UNIQUE_ID']
-        split_df['partition'] = split_df['SPLIT'].apply(lambda split: partition_to_idx[split])
+        split_df['partition'] = split_df['SPLIT_YIELD'].apply(lambda split: partition_to_idx[split])
 
         self._split_array = split_df['partition'].values
 
@@ -231,52 +231,27 @@ class CauveryDataset(SustainBenchDataset):
         coord = np.argwhere(mask == plot_id)
         top_left_coord = np.min(coord, 0)
         bottom_right_coord = np.max(coord, 0)
-        sowing = np.unique(sowing[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0]
-        transplanting = np.unique(transplanting[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0]
-        harvesting = np.unique(harvesting[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0]
+        sowing = np.unique(sowing[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0] - 1
+        transplanting = np.unique(transplanting[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0] - 1
+        harvesting = np.unique(harvesting[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0] - 1
         return torch.Tensor([sowing, harvesting, transplanting])
 
-    def metrics(self, y_true, y_pred, l1_weight=1):
-        """
-        Regularized MSE loss; l2 loss with l1 loss too.
-
-        Parameters
-        ----------
-        pred: torch.floatTensor
-            The model predictions
-        true: torch.floatTensor
-            The true values
-        l1_weight: int
-            The value by which to weight the l1 loss
-        scores_dict: defaultdict(list)
-            A dict to which scores can be appended.
-
-        Returns
-        ----------
-        loss: the regularized mse loss
-        """
-        loss = F.mse_loss(y_pred, y_true)
-
-        scores_dict["l2"].append(loss.item())
-
-        if l1_weight > 0:
-            l1 = F.l1_loss(y_pred, y_true)
-            loss += l1
-            scores_dict["l1"].append(l1.item())
-        scores_dict["loss"].append(loss.item())
-
-        y_true = y_true.detach().cpu().numpy().flatten()
-        y_pred = y_pred.detach().cpu().numpy().flatten()
+    def metrics(self, y_true, y_pred):
+        y_pred = y_pred.argmax(dim=1)
+        y_pred = y_pred.reshape(-1, 3)
+        print("Shapes of y_true and y_pred respectively:", y_true.shape, y_pred.shape)
+        y_true = y_true.flatten()
+        y_pred = y_pred.flatten()
         assert (y_true.shape == y_pred.shape)
+        y_true = y_true.int()
+        y_pred = y_pred.int()
+        f1 = f1_score(y_true, y_pred, average='macro')
+        acc = accuracy_score(y_true, y_pred)
+        print('Macro Dice/ F1 score:', f1)
+        print('Accuracy score:', acc)
+        return f1, acc
 
-        error = y_pred - y_true
-        RMSE = np.sqrt(np.mean(error ** 2))
-        scores_dict["RMSE"].append(RMSE)
-        R2 = r2_score(y_true, y_pred)
-        scores_dict["R2"].append(R2)
-        return scores_dict
-
-    def eval(self, y_pred, y_true, metadata, binarized="ignored"): # TODO
+    def eval(self, y_pred, y_true, metadata, binarized=False): # TODO
         """
         Computes all evaluation metrics.
         Args:
@@ -288,13 +263,9 @@ class CauveryDataset(SustainBenchDataset):
             - results (list): List of evaluation metrics
             - results_str (str): String summarizing the evaluation metrics
         """
-        scores_dict = self.metrics(y_true, y_pred)
-        l1 = scores_dict["l1"]
-        l2 = scores_dict["l2"]
-        rmse = scores_dict["RMSE"]
-        r2 = scores_dict["R2"]
-        results = [l1, l2, rmse, r2]
-        results_str = 'L1 loss: {}, L2 loss: {}, RMSE: {}, R2: {}'.format(l1, l2, rmse, r2)
+        f1, acc = self.metrics(y_true, y_pred)
+        results = [f1, acc]
+        results_str = f'Dice/ F1 score: {f1}, Accuracy score: {acc}'
         return results, results_str
 
     def pad_m(self, tensor):

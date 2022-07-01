@@ -120,11 +120,9 @@ def train_dl_model(model, model_name, dataloaders, args):
 
             train_loader = get_train_loader('standard', train_data, args.batch_size)
             model.train() if split == ['train'] else model.eval()
-            nclass = len(CM_LABELS[args.country]) + 1
+            nclass = args.num_timesteps
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
             for inputs, targets, cloudmasks in tqdm(train_loader):
-
-                targets[targets > 4] = 0
                 targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
                 mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
 
