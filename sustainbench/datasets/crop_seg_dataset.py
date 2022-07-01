@@ -129,7 +129,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         if self._split_scheme == "cauvery":
-            img = np.load(path)['mask']
+            img = np.load(path)['plot_id']
             img = np.where(img > 0, 1, 0)
             return img
         img = Image.open(path).convert('RGB')

@@ -164,14 +164,16 @@ class CauveryDataset(SustainBenchDataset):
         # s2 = np.asarray(s2)
         # planet = np.asarray(planet)
 
-        mask = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['mask']
-        coord = np.argwhere(mask > 0)
+        mask = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['plot_id']
+        plot_id = self._metadata_array[idx][0]
+        mask = np.where(mask == plot_id, 1, 0)
+        coord = np.argwhere(mask == 1)
         top_left_coord = np.min(coord, 0)
         bottom_right_coord = np.max(coord, 0)
 
-        s1 = s1[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
-        s2 = s2[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
-        planet = planet[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        s1 = mask * s1[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        s2 = mask * s2[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        planet = mask * planet[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
