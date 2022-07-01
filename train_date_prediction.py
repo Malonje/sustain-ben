@@ -6,10 +6,9 @@ Script for training and evaluating a model
 from cmath import nan
 import os
 import loss_fns
-import models
+import croptype_models
 import datetime
 import torch
-import datasets
 import metrics
 import util
 import numpy as np
@@ -121,11 +120,9 @@ def train_dl_model(model, model_name, dataloaders, args):
 
             train_loader = get_train_loader('standard', train_data, args.batch_size)
             model.train() if split == ['train'] else model.eval()
-            nclass = len(CM_LABELS[args.country]) + 1
+            nclass = args.num_timesteps
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
             for inputs, targets, cloudmasks in tqdm(train_loader):
-
-                targets[targets > 4] = 0
                 targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
                 mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
 
@@ -148,8 +145,8 @@ def train_dl_model(model, model_name, dataloaders, args):
                     targets.to(args.device)
 
                     # ## For 2nd command(unet3d) uncommnet later commands
-                    inputs=torch.cat( (inputs['s1'],inputs['s2'],inputs['planet']), dim=1)
-                    inputs=inputs.permute(0,1,4,2,3)  #torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
+                    inputs=torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
+                    inputs=inputs.permute(0, 1, 4, 2, 3)  #torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs=inputs.float()
                     inputs=inputs.cuda()
 
@@ -274,13 +271,13 @@ def main(args):
 
     # load in data generator
 
-    dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
+    dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images)
 
     dataloaders = dataset
 
     # load in model
-    model = models.get_model(**vars(args))
+    model = croptype_models.get_model(**vars(args))
     if args.model_name in DL_MODELS:
         print('Total trainable model parameters: {}'.format(
             sum(p.numel() for p in model.parameters() if p.requires_grad)))

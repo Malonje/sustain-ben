@@ -21,8 +21,9 @@ import numpy as np
 # import fcn
 
 from constants import *
-from modelling.unet3d import UNet3D
+from modelling.unet3d import UNet3D, conv_block, center_in
 from util import get_num_bands
+import numpy as np
 
 # TODO: figure out how to decompose this
 
@@ -77,6 +78,20 @@ def make_UNet3D_model_pretrained(n_class, n_channel, timesteps, dropout):
 
     return model
 
+
+def make_UNetFC_model(n_class, n_channel, timesteps, dropout):
+    """ Defined a 3d U-Net model
+    Args:
+      n_class - (int) number of classes to predict
+      n_channels - (int) number of input channgels
+
+    Returns:
+      returns the model!
+    """
+    model = DateExtractor(n_channel, n_class, timesteps, dropout)
+    model = model.cuda()
+    return model
+
 def get_model(model_name, **kwargs):
     """ Get appropriate model based on model_name and input arguments
     Args: 
@@ -104,10 +119,47 @@ def get_model(model_name, **kwargs):
                     break
                 state_dict[k] = pretrained_dict[k]
             model.load_state_dict(state_dict)
+    if model_name == 'unet-fc':
+        num_bands = get_num_bands(kwargs)['all']
+        model = make_UNetFC_model(n_class=3, n_channel=num_bands,
+                                      timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
+
 
     else:
         raise ValueError(f"Model {model_name} unsupported, check `model_name` arg") 
         
 
     return model
+
+
+class DateExtractor(nn.Module):
+    def __init__(self, in_channel, n_classes, timesteps, dropout):
+        super(DateExtractor, self).__init__()
+
+        feats = 16
+        self.en3 = conv_block(in_channel, feats*4, feats*4)
+        self.pool_3 = nn.MaxPool3d(kernel_size=2, stride=2, padding=0)
+        self.en4 = conv_block(feats*4, feats*8, feats*8)
+        self.pool_4 = nn.MaxPool3d(kernel_size=2, stride=2, padding=0)
+        self.center_in = center_in(feats*8, feats*16)
+
+        self.features = nn.Linear(timesteps, feats*8)
+        self.date_predictions = nn.Linear(timesteps, n_classes)
+
+        self.logsoftmax = nn.LogSoftmax(dim=1)
+        self.dropout = nn.Dropout(p=dropout, inplace=True)
+
+    def forward(self, x):
+        en3 = self.en3(x)
+        pool_3 = self.pool_3(en3)
+        en4 = self.en4(pool_3)
+        pool_4 = self.pool_4(en4)
+        center_in = self.center_in(pool_4)
+        center_in = center_in.permute(0, 2, 1, 3, 4)
+        center_in = center_in.reshape(-1, np.prod(final.shape[2:]))
+        center_in = self.dropout(center_in)
+        timestep_features = self.features(center_in)
+        y = self.date_predictions(timestep_features)
+        y = self.logsoftmax(y)
+        return y
 

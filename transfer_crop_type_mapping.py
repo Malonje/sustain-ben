@@ -6,7 +6,7 @@ Script for training and evaluating a model
 from cmath import nan
 import os
 import loss_fns
-import models
+import croptype_models
 import datetime
 import torch
 # import datasets
@@ -132,7 +132,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                 targets = torch.index_select(targets, 3, mask)
 
                 targets = targets.permute(0, 3, 1, 2)
-                cloudmasks = None
+                # cloudmasks = None
 
                 with torch.set_grad_enabled(True):
                     if not args.var_length:
@@ -148,10 +148,10 @@ def train_dl_model(model, model_name, dataloaders, args):
                     targets.to(args.device)
 
                     # ## For 2nd command(unet3d) uncommnet later commands
-                    inputs=torch.cat( (inputs['s1'],inputs['s2'],inputs['planet']), dim=1)
-                    inputs=inputs.permute(0,1,4,2,3)  #torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
-                    inputs=inputs.float()
-                    inputs=inputs.cuda()
+                    inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
+                    inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
+                    inputs = inputs.float()
+                    inputs = inputs.cuda()
 
                     # For 3rd command() uncommnet later commands
                     # for a in inputs:
@@ -280,7 +280,7 @@ def main(args):
     dataloaders = dataset
 
     # load in model
-    model = models.get_model(**vars(args))
+    model = croptype_models.get_model(**vars(args))
     if args.model_name in DL_MODELS:
         print('Total trainable model parameters: {}'.format(
             sum(p.numel() for p in model.parameters() if p.requires_grad)))

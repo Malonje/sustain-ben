@@ -53,8 +53,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         if split_scheme == "cauvery":
             self._data_dir = root_dir
         else:
-            self._data_dir = "data/crop_seg_v1.1/" # TODO: implementation only
-        # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
+            self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
 
         self._split_dict = {'train': 0, 'val': 1, 'test': 2}
         self._split_names = {'train': 'Train', 'val': 'Val', 'test': 'Test'}
@@ -90,7 +89,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         self.full_idxs = self.metadata['indices']
         if self.filled_mask:
             if self._split_scheme == "cauvery":
-                self._y_array = np.asarray([os.path.join(self.data_dir, 'cauvery', 'masks', f'{self.metadata.iloc[y]["PLOT_ID"]}.npy') for y in self.full_idxs])
+                self._y_array = np.asarray([os.path.join(self.data_dir, 'cauvery', 'truth', f'cauvery_{y:06}.npz') for y in self.full_idxs])
             else:
                 self._y_array = np.asarray([self.root / 'masks_filled' / f'{y}.png' for y in self.full_idxs])
         else:
@@ -130,7 +129,9 @@ class CropSegmentationDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         if self._split_scheme == "cauvery":
-            return np.load(path)
+            img = np.load(path)['plot_id']
+            img = np.where(img > 0, 1, 0)
+            return img
         img = Image.open(path).convert('RGB')
         return img
 
