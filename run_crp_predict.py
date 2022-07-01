@@ -65,7 +65,7 @@ sigma_b=0.01
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model = convnet.ConvModel(
-    in_channels=9,
+    in_channels=7, #CHANGED FOR OUR STUDY FROM 9 TO 7
     dropout=dropout,
     dense_features=dense_features,
     savedir=savedir,
@@ -122,7 +122,7 @@ for epoch in range(num_epochs):
 
     for train_x, train_y in train_loader:
         optimizer.zero_grad()
-        print('train_X size:',train_x.shape)
+        # print('train_X size:',train_x.shape)
         if is_cuda:
             train_x = train_x.cuda()
             train_y = train_y.cuda()
@@ -133,7 +133,9 @@ for epoch in range(num_epochs):
         train_x=train_x.float()
         train_y=train_y.float()
         pred_y = model(train_x)
-        pred_y=np.squeeze(pred_y)
+        train_y=train_y.reshape(-1,1)
+        # print(train_y.shape)
+        # pred_y=np.squeeze(pred_y)
         # print('pred:',(pred_y).dtype)
         # print('y:',(train_y).dtype)
         loss, running_train_scores = l1_l2_loss(
@@ -196,12 +198,14 @@ for epoch in range(num_epochs):
     print("VALIDATION: {}".format(", ".join(val_output_strings)))
 
     logger.log({
-        f"Train RMSE": float(train_output_strings[2].split(':')[1]),
+        f"Train RMSE": float(train_output_strings[3].split(':')[1]),
         f"Train L2": float(train_output_strings[0].split(':')[1]),
-        f"Train loss" : float(train_output_strings[1].split(':')[1]),
-        f"Val RMSE": float(train_output_strings[2].split(':')[1]),
+        f"Train L1" : float(train_output_strings[1].split(':')[1]),
+        f"Train loss" : float(train_output_strings[2].split(':')[1]),
+        f"Val RMSE": float(val_output_strings[3].split(':')[1]),
         f"Val L2" : float(val_output_strings[0].split(':')[1]),
-        f"Val Loss" : float(val_output_strings[1].split(':')[1]),
+        f"Val Loss" : float(val_output_strings[2].split(':')[1]),
+        f"Val L1" : float(val_output_strings[1].split(':')[1]),
 
     })
 
