@@ -6,10 +6,9 @@ Script for training and evaluating a model
 from cmath import nan
 import os
 import loss_fns
-import models
+import croptype_models
 import datetime
 import torch
-import datasets
 import metrics
 import util
 import numpy as np
@@ -274,13 +273,13 @@ def main(args):
 
     # load in data generator
 
-    dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
+    dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images)
 
     dataloaders = dataset
 
     # load in model
-    model = models.get_model(**vars(args))
+    model = croptype_models.get_model(**vars(args))
     if args.model_name in DL_MODELS:
         print('Total trainable model parameters: {}'.format(
             sum(p.numel() for p in model.parameters() if p.requires_grad)))

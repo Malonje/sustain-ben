@@ -37,7 +37,7 @@ def l1_l2_loss(pred, true, l1_weight, scores_dict):
     assert (true.shape == pred.shape)
 
     error = pred-true
-    RMSE=np.sqrt(np.mean(error**2))
+    RMSE = np.sqrt(np.mean(error**2))
     R2 = r2_score(true, pred)
     scores_dict["RMSE"].append(RMSE)
     return loss, scores_dict

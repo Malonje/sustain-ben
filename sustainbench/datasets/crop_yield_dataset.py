@@ -198,7 +198,7 @@ class CropYieldDataset(SustainBenchDataset):
 
         return RMSE, R2
 
-    def eval(self, y_pred, y_true, metadata, binarized=False): # TODO
+    def eval(self, y_pred, y_true, metadata, binarized=False):  # TODO
         """
         Computes all evaluation metrics.
         Args:

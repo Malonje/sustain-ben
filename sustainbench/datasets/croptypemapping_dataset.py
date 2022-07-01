@@ -131,7 +131,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             'download_url': None,
             'compressed_size': None}}
 
-    def __init__(self, version=None, root_dir='/home/harsh/sust/crop-type-mapping/data', download=False,
+    def __init__(self, version=None, root_dir='data', download=False,
                  split_scheme='official',
                  resize_planet=False, calculate_bands=True, normalize=True):
         """
@@ -253,6 +253,10 @@ class CropTypeMappingDataset(SustainBenchDataset):
             if np.any(temp[t]):
                 planet.append(temp[t])
 
+        s1 = np.asarray(s1)
+        s2 = np.asarray(s2)
+        planet = np.asarray(planet)
+
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
         planet = torch.from_numpy(planet.astype(np.int32))
@@ -315,9 +319,9 @@ class CropTypeMappingDataset(SustainBenchDataset):
         Returns y for a given idx.
         """
         loc_id = f'{self.y_array[idx]:06d}'
-        label = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['truth']
-        label = torch.from_numpy(label)
+        label = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))
         if self._split_scheme in ['official', 'ghana', 'southsudan']:
+            label = torch.from_numpy(label['truth'])
             ## added code
             grid_id = self.grid_id[idx].item()
             if (grid_id == 0):
@@ -327,6 +331,8 @@ class CropTypeMappingDataset(SustainBenchDataset):
             elif (grid_id == 2):
                 return label[0:32, 32:64]
             return label[32:64, 32:64]
+        else:
+            label = torch.from_numpy(label['crop_type'])
         return label
 
     def get_dates(self, json_file):
