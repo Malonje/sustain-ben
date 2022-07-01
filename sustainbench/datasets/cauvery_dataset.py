@@ -221,9 +221,9 @@ class CauveryDataset(SustainBenchDataset):
         """
         Returns x for a given idx.
         """
-        sowing = self._metadata_array[idx][1] - 1
-        transplanting = self._metadata_array[idx][2] - 1
-        harvesting = self._metadata_array[idx][3] - 1
+        sowing = self._metadata_array[idx][1].item() - 1
+        transplanting = self._metadata_array[idx][2].item() - 1
+        harvesting = self._metadata_array[idx][3].item() - 1
         return torch.Tensor([sowing, harvesting, transplanting])
 
     def metrics(self, y_true, y_pred):
