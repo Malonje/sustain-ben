@@ -124,8 +124,8 @@ class CauveryDataset(SustainBenchDataset):
         self._y_array = torch.from_numpy(split_df['id'].values)
         self._y_size = (1)
 
-        self._metadata_fields = ['plot_id', 'y']
-        self._metadata_array = torch.from_numpy(split_df[['PLOT_ID', 'id']].to_numpy())
+        self._metadata_fields = ['PLOT_ID', 'SOWING_DAY', 'TRANSPLANTING_DAY', 'HARVESTING_DAY']
+        self._metadata_array = torch.from_numpy(split_df[self._metadata_fields].to_numpy())
 
         super().__init__(root_dir, download, split_scheme)
 
@@ -145,45 +145,42 @@ class CauveryDataset(SustainBenchDataset):
         images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
 
         s1 = images['s1'].astype(np.int64)
-        # s1 = []
-        # for t in range(temp.shape[0]):
-        #     if np.any(temp[t]):
-        #         s1.append(temp[t])
         s2 = images['s2'].astype(np.int64)
-        # s2 = []
-        # for t in range(temp.shape[0]):
-        #     if np.any(temp[t]):
-        #         s2.append(temp[t])
         planet = images['planet'].astype(np.int64)
-        # planet = []
-        # for t in range(temp.shape[0]):
-        #     if np.any(temp[t]):
-        #         planet.append(temp[t])
 
-        # s1 = np.asarray(s1)
-        # s2 = np.asarray(s2)
-        # planet = np.asarray(planet)
-
-        mask = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['plot_id']
+        mask = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
         plot_id = self._metadata_array[idx][0]
         mask = np.where(mask == plot_id, 1, 0)
         coord = np.argwhere(mask == 1)
         top_left_coord = np.min(coord, 0)
         bottom_right_coord = np.max(coord, 0)
 
-        s1 = mask * s1[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
-        s2 = mask * s2[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
-        planet = mask * planet[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        s1 = (mask * s1)[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        s2 = (mask * s2)[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        mask = np.load(os.path.join(self.data_dir, self.country, 'truth@3m', f'{self.country}_{loc_id}.npz'))['plot_id']  # For planet
+        planet = (mask * planet)[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
         planet = torch.from_numpy(planet.astype(np.int32))
 
         if self.resize_planet:
+            s1 = s1.permute(3, 0, 1, 2)
+            s1 = transforms.Resize(IMG_DIM)(s1)
+            s1 = s1.permute(1, 2, 3, 0)
+            s2 = s2.permute(3, 0, 1, 2)
+            s2 = transforms.Resize(IMG_DIM)(s2)
+            s2 = s2.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.Resize(IMG_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
         else:
+            s1 = s1.permute(3, 0, 1, 2)
+            s1 = transforms.CenterCrop(PLANET_DIM)(s1)
+            s1 = s1.permute(1, 2, 3, 0)
+            s2 = s2.permute(3, 0, 1, 2)
+            s2 = transforms.CenterCrop(PLANET_DIM)(s2)
+            s2 = s2.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.CenterCrop(PLANET_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
@@ -224,18 +221,9 @@ class CauveryDataset(SustainBenchDataset):
         """
         Returns x for a given idx.
         """
-        loc_id = f'{self.y_array[idx]:06d}'
-        sowing = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['sowing_date']
-        transplanting = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['transplanting_date']
-        harvesting = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['harvesting_date']
-        mask = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))['plot_id']
-        plot_id = self._metadata_array[idx][0]
-        coord = np.argwhere(mask == plot_id)
-        top_left_coord = np.min(coord, 0)
-        bottom_right_coord = np.max(coord, 0)
-        sowing = np.unique(sowing[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0] - 1
-        transplanting = np.unique(transplanting[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0] - 1
-        harvesting = np.unique(harvesting[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]])[0] - 1
+        sowing = self._metadata_array[idx][1] - 1
+        transplanting = self._metadata_array[idx][2] - 1
+        harvesting = self._metadata_array[idx][3] - 1
         return torch.Tensor([sowing, harvesting, transplanting])
 
     def metrics(self, y_true, y_pred):
