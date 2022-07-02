@@ -239,19 +239,19 @@ class CropTypeMappingDataset(SustainBenchDataset):
 
         temp = images['s1'].astype(np.int64)
         s1 = []
-        for t in range(temp.shape[0]):
-            if np.any(temp[t]):
-                s1.append(temp[t])
+        for t in range(temp.shape[-1]):  # (B x H x W x T) shape of the input image
+            if np.any(temp[:, :, :, t]):
+                s1.append(temp[:, :, :, t])
         temp = images['s2'].astype(np.int64)
         s2 = []
-        for t in range(temp.shape[0]):
-            if np.any(temp[t]):
-                s2.append(temp[t])
+        for t in range(temp.shape[-1]):
+            if np.any(temp[:, :, :, t]):
+                s2.append(temp[:, :, :, t])
         temp = images['planet'].astype(np.int64)
         planet = []
-        for t in range(temp.shape[0]):
-            if np.any(temp[t]):
-                planet.append(temp[t])
+        for t in range(temp.shape[-1]):
+            if np.any(temp[:, :, :, t]):
+                planet.append(temp[:, :, :, t])
 
         s1 = np.asarray(s1)
         s2 = np.asarray(s2)
@@ -260,7 +260,6 @@ class CropTypeMappingDataset(SustainBenchDataset):
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2.astype(np.int32))
         planet = torch.from_numpy(planet.astype(np.int32))
-        print(s1.shape, s2.shape, planet.shape)
 
         if self.resize_planet:
             planet = planet.permute(3, 0, 1, 2)
@@ -319,8 +318,8 @@ class CropTypeMappingDataset(SustainBenchDataset):
         Returns y for a given idx.
         """
         loc_id = f'{self.y_array[idx]:06d}'
-        label = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))
         if self._split_scheme in ['official', 'ghana', 'southsudan']:
+            label = np.load(os.path.join(self.data_dir, self.country, 'truth', f'{self.country}_{loc_id}.npz'))
             label = torch.from_numpy(label['truth'])
             ## added code
             grid_id = self.grid_id[idx].item()
@@ -332,6 +331,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
                 return label[0:32, 32:64]
             return label[32:64, 32:64]
         else:
+            label = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))
             label = torch.from_numpy(label['crop_type'])
         return label
 
