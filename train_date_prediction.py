@@ -106,7 +106,7 @@ def train_dl_model(model, model_name, dataloaders, args):
 
     # set up information lists for visdom
     vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
-    loss_fn = loss_fns.get_loss_fn(model_name)
+    loss_fn = nn.NLLLoss(reduction="none")
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val_f1 = 0
 
@@ -124,11 +124,11 @@ def train_dl_model(model, model_name, dataloaders, args):
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
             for inputs, targets, cloudmasks in tqdm(train_loader):
                 targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
-                mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
+                # mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
+                #
+                # targets = torch.index_select(targets, 3, mask)
 
-                targets = torch.index_select(targets, 3, mask)
-
-                targets = targets.permute(0, 3, 1, 2)
+                # targets = targets.permute(0, 3, 1, 2)
                 cloudmasks = None
 
                 with torch.set_grad_enabled(True):
@@ -144,29 +144,22 @@ def train_dl_model(model, model_name, dataloaders, args):
                                 inputs[sat].to(args.device)
                     targets.to(args.device)
 
-                    # ## For 2nd command(unet3d) uncommnet later commands
-                    inputs=torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
-                    inputs=inputs.permute(0, 1, 4, 2, 3)  #torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
-                    inputs=inputs.float()
-                    inputs=inputs.cuda()
-
-                    # For 3rd command() uncommnet later commands
-                    # for a in inputs:
-                    #     inputs[a] = inputs[a].permute(0, 4, 1, 2, 3)  ##  batch, timestamps, bands, rows, columns
-                    #     inputs[a] = inputs[a].float().cuda()
-
-                    # # ## For 4th command() uncommnet later commands
-                    # inputs=torch.cat( (inputs['s1'],inputs['s2'],inputs['planet']), dim=1)
-                    # inputs=inputs.permute(0,4,1,2,3)
-                    # inputs=inputs.float().cuda()
+                    inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
+                    inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
+                    inputs = inputs.float()
+                    inputs = inputs.cuda()
 
                     preds = model(inputs)
-                    loss, cm_cur, total_correct, num_pixels, confidence = evaluate(model_name, preds, targets,
-                                                                                   args.country, loss_fn=loss_fn,
-                                                                                   reduction="sum",
-                                                                                   loss_weight=args.loss_weight,
-                                                                                   weight_scale=args.weight_scale,
-                                                                                   gamma=args.gamma)
+                    loss = torch.sum(loss_fn(preds, targets))
+                    results, results_str = dataset.eval(preds, targets)
+                    f1, acc = results
+                    print(results_str)
+                    # loss, cm_cur, total_correct, num_pixels, confidence = evaluate(model_name, preds, targets,
+                    #                                                                args.country, loss_fn=loss_fn,
+                    #                                                                reduction="sum",
+                    #                                                                loss_weight=args.loss_weight,
+                    #                                                                weight_scale=args.weight_scale,
+                    #                                                                gamma=args.gamma)
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
