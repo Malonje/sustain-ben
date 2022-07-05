@@ -67,7 +67,7 @@ csv_log_file = 'log_unet_' + image_type
 batch_size = 6
 
 # Load the full dataset, and download it if necessary
-dataset = get_dataset(dataset='crop_seg', filled_mask=False, download=True)
+dataset = get_dataset(dataset='crop_seg', filled_mask=True, download=True)
 
 BACKBONE = 'resnet34'
 preprocess_input = get_preprocessing_fn(BACKBONE)

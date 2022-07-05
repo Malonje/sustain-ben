@@ -240,7 +240,7 @@ class CauveryDataset(SustainBenchDataset):
         print('Accuracy score:', acc)
         return f1, acc
 
-    def eval(self, y_pred, y_true, metadata, binarized=False): # TODO
+    def eval(self, y_pred, y_true, metadata=None, binarized=False): # TODO
         """
         Computes all evaluation metrics.
         Args:

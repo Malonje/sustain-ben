@@ -11,7 +11,7 @@ import numpy as np
 from sustainbench import get_dataset
 from sustainbench.common.data_loaders import get_eval_loader
 import torchvision.transforms as transforms
-from models.unet import unet
+# from models.unet import unet
 from segmentation_models_pytorch.encoders import get_preprocessing_fn
 from sklearn.metrics import f1_score, accuracy_score, precision_recall_fscore_support
 decimal_precision = 5
@@ -35,7 +35,7 @@ def get_metric(y_true, y_pred, binarized=True):
 decimal_precision = 5
 BACKBONE = 'resnet34'
 is_cuda = True
-checkpoint_path='/home/parichya/Documents/dilineation_result/'
+checkpoint_path='model_weights/cropseg_weights.pth.tar'
 preprocess_input = get_preprocessing_fn(BACKBONE)
 batch_size = 6
 
@@ -64,20 +64,22 @@ elif is_imageNet:
     model_unet = smp.Unet(encoder_name="resnet34", encoder_weights="imagenet", in_channels=num_channels, classes=1)
 
     if is_stacked:
-        modules = []
-        modules.append(nn.Conv2d(num_channels, 3,  kernel_size=(1,1), padding='same'),nn.ReLU())
-        modules.append(model_unet)
-
-        new_model = nn.Sequential(*modules)
-
-        model = new_model
-
+        modules = [
+            nn.Conv2d(num_channels, 3, kernel_size=(1, 1), padding='same'),
+            nn.ReLU(),
+            model_unet
+        ]
+        model = nn.Sequential(*modules)
     else:
-        model = model_unet
+        modules = [
+            model_unet,
+            nn.Sigmoid()
+        ]
+        model = nn.Sequential(*modules)
 else:
     model = unet(input_size=input_shape)
 
-checkpoint = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
+checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint["model_state_dict"])
 
 if is_cuda:
