@@ -77,7 +77,7 @@ class CropYieldDataset(SustainBenchDataset):
         self._split_names = {'train': 'Train', 'val': 'Val', 'test': 'Test'}
 
         self._split_scheme = split_scheme
-        if self._split_scheme not in ['official', 'usa', 'argentina', 'brazil','cauvery']:
+        if self._split_scheme not in ['official', 'usa', 'argentina', 'brazil', 'cauvery']:
             raise ValueError(f'Split scheme {self._split_scheme} not recognized')
         if self._split_scheme == 'official':
             self._country = 'usa'
@@ -119,8 +119,6 @@ class CropYieldDataset(SustainBenchDataset):
 
             self._histograms = np.concatenate([train_data, val_data, test_data])
             self._split_array = np.concatenate([train_mask, val_mask, test_mask])
-
-
 
             self.metadata = pd.DataFrame(data={
                 "key": np.concatenate([train_keys, val_keys, test_keys]),
@@ -173,13 +171,21 @@ class CropYieldDataset(SustainBenchDataset):
 
 
 
-        if self.split_scheme=='cauvery':
-            data_file = os.path.join(country_data_dir,'yield_npz/S2_hist.npz')  #, f'{fname}_hists.npz')
+        if self.split_scheme == 'cauvery':
+            data_file = os.path.join(country_data_dir,'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
+            # data_file_2= os.path.join(country_data_dir,'yield_npz/S2_hist.npz')
+            # data2 = np.load(data_file_2)['data'].astype(float)
             data = np.load(data_file)['data'].astype(float)
-            df=pd.read_csv(os.path.join(country_data_dir,'cauvery_data_yield.csv'))
+            df=pd.read_csv(os.path.join(country_data_dir,'cauvery_dataset_l8final.csv')).reset_index(drop=True)
+            # print(df)
             idx_ = df.index[df['SPLIT_YIELD'] == fname].tolist()
+            # print(idx_)
             data=data[idx_]
+            # data2=data2[idx_]
             # labels_file = os.path.join()#path to csv)
+            # data=np.concatenate((data,data2), axis=-1)
+            # print(data.shape)
+
             labels = df['YIELD'].to_numpy()[idx_]
             years = df['YEAR'].to_numpy()[idx_].astype(int)
             return data, labels, years
@@ -195,7 +201,8 @@ class CropYieldDataset(SustainBenchDataset):
             labels = np.load(labels_file)['data']
             years = np.load(years_file)['data'].astype(int)
             keys = np.load(keys_file)['data']
-        
+        # print(data)
+        # print(labels)
         return data, labels, years, keys
     
     def get_input(self, idx):
@@ -203,11 +210,16 @@ class CropYieldDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         img = self._histograms[idx]
-        if self.split_scheme=='cauvery':
-            satellite_bands=[0,1,2,3,4,5,6]
-            img = img[:,:,satellite_bands]
+
+        if self.split_scheme == 'cauvery':
+            # satellite_bands_ps=[0,3,2,1]
+            # img = img[:,:,satellite_bands_ps]
+            satellite_bands_l8=[3,4,1,2,5,6,7]
+            img = img[:,:,satellite_bands_l8]
+            # satellite_bands_S2=[2,6,0,1,8,9,3]
+            # img = img[:,:,satellite_bands_S2]
         else:
-            modis_bands=[0,1,2,3,5,6,7]
+            modis_bands=[0,1,2,3,5,6,7] #training planet scope
             img = img[:,:,modis_bands]
 
         return img

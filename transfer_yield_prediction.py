@@ -48,7 +48,8 @@ batch_size=32
 # Prepare the standard data loader
 train_loader = get_train_loader('standard', train_data, batch_size=batch_size)
 val_loader   = get_train_loader('standard', val_data, batch_size=batch_size)
-dropout=0.5
+# dropout=0.5
+dropout=0.2
 savedir=Path("/home/parichya/Documents/sustainbench/results_prediction_transfer")
 dense_features=None
 train_steps=25000
@@ -67,7 +68,7 @@ sigma_b=0.01
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model = convnet.ConvModel(
-    in_channels=7,
+    in_channels=10,
     dropout=dropout,
     dense_features=dense_features,
     savedir=savedir,
@@ -84,42 +85,18 @@ is_cuda=True
 if is_cuda:
     model = model.model.cuda()
 
-
-# for module, param in zip(model.en3.modules(), model.en3.parameters()):
-#     param.requires_grad = False
-
-# for param in model.parameters():
-#     param.requires_grad = False
 # for module, param in zip(model.convblocks.modules(), model.convblocks.parameters()):
 #     param.requires_grad = False
-# model_type = model_type
-# model_weight = model_weight
-# model_bias = model_bias
 
-best_epoch=94
-# checkpoint = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
-# model.load_state_dict(checkpoint["model_state_dict"],strict=False)
+# best_epoch=94
 
-# checkpoint = model.state_dict()
-pretrained = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
+# pretrained = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
+# model.load_state_dict(pretrained['model_state_dict'])
 
-# pretrained = {k: v for k, v in pretrained.items() if k in checkpoint}
-# checkpoint.update(pretrained)
-model.load_state_dict(pretrained['model_state_dict'])
-
-# pretrained_dict = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
-# state_dict = model.state_dict()
-# for k in state_dict:
-#     print(k)
-#     if "final" in k:
-#         break
-#     state_dict[k] = pretrained_dict[k]
-# model.load_state_dict(state_dict)
-
-# exit()
 optimizer = torch.optim.Adam(
             # model.fc.parameters(), #TRAINING LAST LAYER ONLY
-            [pam for pam in model.parameters()],
+            # [pam for pam in model.parameters()],
+            model.parameters(),
             lr=starter_learning_rate,
             weight_decay=weight_decay,
         )
@@ -137,7 +114,7 @@ min_loss = np.inf
 best_state = model.state_dict()
 model=model.float()
 
-
+prev_val_rmse=1000000
 
 if patience is not None:
     epochs_without_improvement = 0
@@ -196,11 +173,7 @@ for epoch in range(num_epochs):
         )
 
     running_val_scores = defaultdict(list)
-    checkpoint = {
-                                'model_state_dict': model.state_dict(),
-                                'optimizer_state_dict': optimizer.state_dict(),
-                }
-    torch.save(checkpoint, os.path.join(checkpoint_path, f"epoch{epoch+1}.checkpoint.pth.tar"))
+
     model.eval()
 
 
@@ -233,6 +206,14 @@ for epoch in range(num_epochs):
     print("TRAINING: {}".format(", ".join(train_output_strings)))
     print("VALIDATION: {}".format(", ".join(val_output_strings)))
     print(train_output_strings)
+    val_rmse=float(val_output_strings[3].split(':')[1])
+    if prev_val_rmse > val_rmse:
+        prev_val_rmse=val_rmse
+        checkpoint = {
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                }
+        torch.save(checkpoint, os.path.join(checkpoint_path, f"BESTepochS2.checkpoint.pth.tar"))
 
     logger.log({
         f"Train RMSE": float(train_output_strings[3].split(':')[1]),
@@ -263,6 +244,6 @@ for epoch in range(num_epochs):
         #     model.load_state_dict(best_state)
         #     print("Early stopping!")
         #     break
-
+print('VALIDATION RMSE :', prev_val_rmse)
 model.load_state_dict(best_state)
 # print( train_scores, val_scores)

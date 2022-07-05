@@ -60,7 +60,7 @@ times=32
 time=32
 sigma_e=0.32
 sigma_b=0.01
-in_channels=7
+in_channels=10
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 is_cuda=True
 model = convnet.ConvNet(
@@ -69,15 +69,15 @@ model = convnet.ConvNet(
             dense_features=dense_features,
             time=time,
         )
-best_epoch=94
-checkpoint = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
+# best_epoch=94
+checkpoint = torch.load(os.path.join(checkpoint_path, f"BESTepochS2.checkpoint.pth.tar"))
 model.load_state_dict(checkpoint["model_state_dict"])
 
 if is_cuda:
     model = model.cuda()
 model=model.float()
 
-dataset = get_dataset(dataset='crop_yield')
+dataset = get_dataset(dataset='crop_yield',split_scheme="cauvery",root_dir='/home/parichya/Documents/')
 train_data = dataset.get_subset('train')
 test_data=dataset.get_subset('test')
 batch_size=32
@@ -114,12 +114,13 @@ for test_im, test_yield in test_loader:
         if is_cuda:
             test_im=test_im.to("cuda")
             test_yield=test_yield.to("cuda")
-
+        print(test_im.shape)
         test_im=torch.permute(test_im, (0,3,1,2))
+        print(test_im.shape)
         test_im=test_im.float()
         test_yield=test_yield.float()
         model_output = model(
-            test_im, return_last_dense=True if (gp is not None) else False
+            test_im#, return_last_dense=True if (gp is not None) else False
         )
         # if gp is not None:
         #     pred, feat = model_output

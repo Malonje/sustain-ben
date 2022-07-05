@@ -56,7 +56,6 @@ def get_preprocessing(preprocessing_fn):
     ]
     return albu.Compose(_transform)
 
-
 def get_individual_fields(segmentation_mask):
     segmentation_mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
     row = []
@@ -100,7 +99,7 @@ def get_individual_fields(segmentation_mask):
     for i in range(1, np.max(solution)+1):
         x1, y1 = np.min(np.where(solution == i), 1)
         x2, y2 = np.max(np.where(solution == i), 1)
-        fields.append(solution[x1:x2, y1:y2])
+        fields.append(np.where(solution[x1:x2+1, y1:y2+1]==i,1,0))
     return fields
 
 
@@ -144,8 +143,10 @@ def main(args):
     # TESTING
     model.eval()
     predictions = []
+    batch_iou = []
     output = []
     fields = []
+
     with torch.no_grad():
         for x, y in test_loader:
             if is_cuda:
@@ -163,7 +164,7 @@ def main(args):
             # idx = torch.where(y == 1)
             # print(idx)
             # output = output[idx]
-            predictions.extend(batch_output)
+            predictions.extend(fields)
     return predictions
 
 
