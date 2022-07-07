@@ -142,13 +142,13 @@ class CauveryDataset(SustainBenchDataset):
         """
         Returns x for a given idx.
         """
-        loc_id = f'{self.y_array[idx][0]:06d}'
-        # images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
-        s1 = np.load(os.path.join(self.data_dir, '/home/parichya/Documents/cauvery_data_new(32X32)/S1/', f'{int(loc_id)}.npy'))
-        s2 = np.load(os.path.join(self.data_dir, '/home/parichya/Documents/cauvery_data_new(32X32)/S2/', f'{int(loc_id)}.npy'))
+        loc_id = f'{int(self.y_array[idx][0].item()):06d}'
+        images = np.load(os.path.join(self.data_dir, self.country, 'npy', f'{self.country}_{loc_id}.npz'))
+        # s1 = np.load(os.path.join(self.data_dir, '/home/parichya/Documents/cauvery_data_new(32X32)/S1/', f'{int(loc_id)}.npy'))
+        # s2 = np.load(os.path.join(self.data_dir, '/home/parichya/Documents/cauvery_data_new(32X32)/S2/', f'{int(loc_id)}.npy'))
 
-        # s1 = images['s1'].astype(np.int64)
-        # s2 = images['s2'].astype(np.int64)
+        s1 = images['s1'].astype(np.int64)
+        s2 = images['s2'].astype(np.int64)
         # planet = images['planet'].astype(np.int64)
 
         mask = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
@@ -162,7 +162,7 @@ class CauveryDataset(SustainBenchDataset):
         x_max, y_max = np.max(coords,axis=0)
 
         # cropped = img[ : , : , x_min:x_max+1, y_min:y_max+1]
-        print(s1.shape, s2.shape)
+        # print(s1.shape, s2.shape)
         s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s1=s1.transpose(1,2,3,0)
@@ -174,12 +174,12 @@ class CauveryDataset(SustainBenchDataset):
         # planet = (mask * planet)[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
 
         s1 = torch.from_numpy(s1)
-        s2 = torch.from_numpy(s2.astype(np.int32))
-        print(s1.shape, s2.shape)
+        s2 = torch.from_numpy(s2)
+        # print(s1.shape, s2.shape)
         # planet = torch.from_numpy(planet.astype(np.int32))
 
         if self.resize_planet:
-            print(s1.shape, s2.shape)
+            # print(s1.shape, s2.shape)
             s1 = s1.permute(3, 0, 1, 2)
             s1 = transforms.Resize(IMG_DIM)(s1)
             s1 = s1.permute(1, 2, 3, 0)
@@ -227,8 +227,8 @@ class CauveryDataset(SustainBenchDataset):
             s2 = torch.cat((s2, torch.unsqueeze(ndvi_s2, 0), torch.unsqueeze(gcvi_s2, 0)), 0)
             # planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
 
-        s1 = self.pad(s1)
-        s2 = self.pad(s2)
+        # s1 = self.pad(s1)
+        # s2 = self.pad(s2)
         # planet = self.pad(planet)
         return {'s1': s1, 's2': s2}
 
@@ -236,25 +236,35 @@ class CauveryDataset(SustainBenchDataset):
         """
         Returns x for a given idx.
         """
-        sowing = self.y_array[idx][2].item() - 1
+        sowing = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
         transplanting = self.y_array[idx][3].item() - 1
         harvesting = self.y_array[idx][4].item() - 1
-        return torch.Tensor([sowing, harvesting, transplanting])
+        return torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)
 
     def metrics(self, y_true, y_pred):
-        y_pred = y_pred.argmax(dim=1)
-        y_pred = y_pred.reshape(-1, 3)
-        print("Shapes of y_true and y_pred respectively:", y_true.shape, y_pred.shape)
+        y_pred = y_pred.argmax(axis=1)
+        # print("Shapes of y_true and y_pred respectively:", y_true.shape, y_pred.shape)
         y_true = y_true.flatten()
         y_pred = y_pred.flatten()
         assert (y_true.shape == y_pred.shape)
-        y_true = y_true.int()
-        y_pred = y_pred.int()
+        y_true = y_true.astype('int')
+        y_pred = y_pred.astype('int')
+        # print(y_true)
+        # print(y_pred)
+        rmse = np.sqrt(np.mean((y_true-y_pred)**2))
         f1 = f1_score(y_true, y_pred, average='macro')
-        acc = accuracy_score(y_true, y_pred)
-        print('Macro Dice/ F1 score:', f1)
-        print('Accuracy score:', acc)
-        return f1, acc
+        acc = []
+        for t, p in zip(y_true, y_pred):
+            if np.abs(t - p) <= 5:
+                acc.append(1)
+            else:
+                acc.append(0)
+        acc = sum(acc)/len(acc)
+        # acc = accuracy_score(y_true, y_pred)
+        # print('Macro Dice/ F1 score:', f1)
+        # print('RMSE:', rmse)
+        # print('Accuracy score:', acc)
+        return f1, rmse, acc
 
     def eval(self, y_pred, y_true, metadata=None, binarized=False): # TODO
         """
@@ -268,8 +278,8 @@ class CauveryDataset(SustainBenchDataset):
             - results (list): List of evaluation metrics
             - results_str (str): String summarizing the evaluation metrics
         """
-        f1, acc = self.metrics(y_true, y_pred)
-        results = [f1, acc]
+        f1, rmse, acc = self.metrics(y_true, y_pred)
+        results = [f1, rmse, acc]
         results_str = f'Dice/ F1 score: {f1}, Accuracy score: {acc}'
         return results, results_str
 
@@ -310,9 +320,9 @@ class CauveryDataset(SustainBenchDataset):
         Returns:
           grid - (tensor) a normalized version of the input grid
         """
-        print(satellite)
+        # print(satellite)
         num_bands = grid.shape[0]
-        print(grid.shape)
+        # print(grid.shape)
         means = MEANS[satellite][self.country]
         stds = STDS[satellite][self.country]
         grid = (grid - means[:num_bands].reshape(num_bands, 1, 1, 1)) / stds[:num_bands].reshape(num_bands, 1, 1, 1)

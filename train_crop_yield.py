@@ -106,7 +106,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
     # set up information lists for visdom
     vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
-    loss_fn = nn.NLLLoss(reduction="none")
+    loss_fn = nn.MSELoss(reduction="none")
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val_f1 = 0
 
