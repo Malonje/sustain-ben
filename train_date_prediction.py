@@ -26,7 +26,8 @@ from sustainbench.common.data_loaders import get_train_loader
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 
-
+run_name = logger.init(project='date_prediction', reinit=True)
+checkpoint_path='/home/parichya/Documents/date_prediction/'
 def evaluate_split(model, model_name, split_loader, device, loss_weight, weight_scale, gamma, num_classes, country,
                    var_length):
     total_loss = 0
@@ -111,7 +112,8 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
     best_val_f1 = 0
 
     model = model.cuda()
-
+    train_rmse=11111111
+    train_acc=0
 
     for i in range(args.epochs if not args.eval_on_test else 1):
         ep_f1, ep_rmse, ep_acc = [], [], []
@@ -265,8 +267,31 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
             #
             #             vis_logger.record_epoch('train', i, args.country, save=True,
             #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-        print(f"[EPOCH {i:03d}] => F1: {sum(ep_f1)/len(ep_f1)},RMSE: {sum(ep_rmse)/len(ep_rmse)}, Acc: {sum(ep_acc)/len(ep_acc)}")
 
+        print(f"[EPOCH {i:03d}] => F1: {sum(ep_f1)/len(ep_f1)},RMSE: {sum(ep_rmse)/len(ep_rmse)}, Acc: {sum(ep_acc)/len(ep_acc)}")
+        train_rmse_=sum(ep_rmse)/len(ep_rmse)
+        train_acc_= sum(ep_acc)/len(ep_acc)
+        train_dice = sum(ep_f1)/len(ep_f1)
+        if train_rmse > train_rmse_:
+            train_rmse=train_rmse_
+            checkpoint = {
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                }
+            torch.save(checkpoint, os.path.join(checkpoint_path, f"BEST_RMSE_epoch.checkpoint.pth.tar"))
+        if train_acc < train_acc_:
+            train_acc=train_acc_
+            checkpoint = {
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                }
+            torch.save(checkpoint, os.path.join(checkpoint_path, f"BEST_ACC_epoch.checkpoint.pth.tar"))
+
+        logger.log({
+        f"Train RMSE": train_rmse_,
+        f"Train ACC": train_acc_,
+        f"Train F1": train_dice,
+        })
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None, dataset=None):
     """ Trains the model on the inputs

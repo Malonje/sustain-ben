@@ -149,9 +149,11 @@ class CauveryDataset(SustainBenchDataset):
 
         s1 = images['s1'].astype(np.int64)
         s2 = images['s2'].astype(np.int64)
+        l8 = images['l8'].astype(np.int64)
         # planet = images['planet'].astype(np.int64)
 
         mask = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
+        mask_l8 = np.load(os.path.join(self.data_dir, self.country, 'truth@30m', f'{self.country}_{loc_id}.npz'))['plot_id']
         plot_id = self._metadata_array[idx][1].item()
         # mask = np.where(mask == plot_id, 1, 0)
         # coord = np.argwhere(mask == 1)
@@ -165,8 +167,11 @@ class CauveryDataset(SustainBenchDataset):
         # print(s1.shape, s2.shape)
         s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+
         s1=s1.transpose(1,2,3,0)
         s2=s2.transpose(1,2,3,0)
+        l8=l8.transpose(1,2,3,0)
 
         # s1 = (mask * s1.transpose(3,0,1,2))[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
         # s2 = (mask * s2.transpose(3,0,1,2))[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
@@ -175,6 +180,8 @@ class CauveryDataset(SustainBenchDataset):
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2)
+        l8 = torch.from_numpy(l8)
+
         # print(s1.shape, s2.shape)
         # planet = torch.from_numpy(planet.astype(np.int32))
 
@@ -186,6 +193,9 @@ class CauveryDataset(SustainBenchDataset):
             s2 = s2.permute(3, 0, 1, 2)
             s2 = transforms.Resize(IMG_DIM)(s2)
             s2 = s2.permute(1, 2, 3, 0)
+            l8 = l8.permute(3, 0, 1, 2)
+            l8 = transforms.Resize(IMG_DIM)(l8)
+            l8 = l8.permute(1, 2, 3, 0)
             # planet = planet.permute(3, 0, 1, 2)
             # planet = transforms.Resize(IMG_DIM)(planet)
             # planet = planet.permute(1, 2, 3, 0)
@@ -220,6 +230,7 @@ class CauveryDataset(SustainBenchDataset):
         if self.normalize:
             s1 = self.normalization(s1, 's1')
             s2 = self.normalization(s2, 's2')
+            l8 = self.normalization(l8, 'l8')
             # planet = self.normalization(planet, 'planet')
 
         # Concatenate calculated bands
@@ -230,7 +241,7 @@ class CauveryDataset(SustainBenchDataset):
         # s1 = self.pad(s1)
         # s2 = self.pad(s2)
         # planet = self.pad(planet)
-        return {'s1': s1, 's2': s2}
+        return {'s1': s1, 's2': s2, 'l8': l8 }
 
     def get_label(self, idx):
         """
