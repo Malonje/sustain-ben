@@ -100,7 +100,8 @@ LOSS_WEIGHT = {'ghana': GHANA_LOSS_WEIGHT,
 
 # BAND STATS
 
-BANDS = {'s1': {'VV': 0, 'VH': 1, 'RATIO': 2},
+BANDS = {'l8': {'8': {'UBLUE': 0, 'BLUE': 1, 'GREEN': 2, 'RED': 3, 'NIR': 4, 'SWIR1': 5, 'SWIR2': 6, 'THERMAL': 7}},
+         's1': {'VV': 0, 'VH': 1, 'RATIO': 2},
          's2': {'10': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'RDED1': 3, 'RDED2': 4, 'RDED3': 5, 'NIR': 6, 'RDED4': 7,
                        'SWIR1': 8, 'SWIR2': 9},
                 '4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}},
