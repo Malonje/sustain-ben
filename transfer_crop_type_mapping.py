@@ -14,6 +14,7 @@ import metrics
 import util
 import numpy as np
 import pickle
+from sustainbench import logger
 
 from torch import autograd
 
@@ -109,7 +110,7 @@ def train_dl_model(model, model_name, dataloaders, args):
     # vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
     loss_fn = loss_fns.get_loss_fn(model_name)
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
-    best_val_f1 = 0
+    best_val = 0
 
     for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
@@ -117,6 +118,8 @@ def train_dl_model(model, model_name, dataloaders, args):
         # vis_logger.reset_epoch_data()
 
         for split in ['train', 'val'] if not args.eval_on_test else ['test']:
+            correct_pixels = 0
+            total_pixels = 0
             train_data = dataloaders.get_subset(split)
 
             train_loader = get_train_loader('standard', train_data, args.batch_size)
@@ -169,6 +172,8 @@ def train_dl_model(model, model_name, dataloaders, args):
                                                                                    loss_weight=args.loss_weight,
                                                                                    weight_scale=args.weight_scale,
                                                                                    gamma=args.gamma)
+                    correct_pixels += total_correct
+                    total_pixels += num_pixels
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
@@ -207,15 +212,28 @@ def train_dl_model(model, model_name, dataloaders, args):
                 # del loss  # adding this as the gpu usage was increasing with time
                 # del preds
 
+            accuracy = correct_pixels / total_pixels
+
             if split in ['test']:
-                print(f"[Test] #Correct: {total_correct}, #Pixels {num_pixels}, Accuracy: {total_correct/num_pixels}")
+                print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                 # vis_logger.record_epoch(split, i, args.country, save=False,
                 #                         save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
             else:
                 if split == 'val':
-                    print(f"[Validation] #Correct: {total_correct}, #Pixels {num_pixels}, Accuracy: {total_correct/num_pixels}")
+                    logger.log({
+                        f"Validation Accuracy": accuracy,
+                        "X-Axis": i,
+                    })
+                    print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                    if best_val < accuracy:
+                        best_val = accuracy
+                        torch.save(model.state_dict(), "../model_weights/crop_type_best_val.pth.tar")
                 else:
-                    print(f"[Train] #Correct: {total_correct}, #Pixels {num_pixels}, Accuracy: {total_correct/num_pixels}")
+                    logger.log({
+                        f"Train Accuracy": accuracy,
+                        "X-Axis": i
+                    })
+                    print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                 # vis_logger.record_epoch(split, i, args.country)
 
             # if split == 'val':
@@ -319,6 +337,7 @@ def main(args):
 if __name__ == "__main__":
     # parse args
     parser = util.get_train_parser()
+    run_name = logger.init(project='crop_type_mapping', reinit=True)
 
     main(parser.parse_args())
 
