@@ -89,7 +89,7 @@ class CropSegmentationDataset(SustainBenchDataset):
         self.full_idxs = self.metadata['indices']
         if self.filled_mask:
             if self._split_scheme == "cauvery":
-                self._y_array = np.asarray([os.path.join(self.data_dir, 'cauvery', 'truth', f'cauvery_{y:06}.npz') for y in self.full_idxs])
+                self._y_array = np.asarray([Path(self.root / 'cauvery' / 'truth@10m' / f'cauvery_{y:06}.npz') for y in self.full_idxs])
             else:
                 self._y_array = np.asarray([self.root / 'masks_filled' / f'{y}.png' for y in self.full_idxs])
         else:
@@ -100,7 +100,7 @@ class CropSegmentationDataset(SustainBenchDataset):
 
         if self._split_scheme == "cauvery":
             self._metadata_fields = self.metadata.columns
-            self._metadata_array = self.metadata
+            self._metadata_array = self.metadata.to_numpy()
         else:
             self._metadata_fields = ['y', 'max_lat', 'max_lon', 'min_lat', 'min_lon']
             self._metadata_array = self.metadata[self._metadata_fields].to_numpy()
@@ -112,14 +112,22 @@ class CropSegmentationDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         if self._split_scheme == "cauvery":
-            image = np.load(os.path.join(self.data_dir, "cauvery", 'npy', f'cauvery_{idx:06}.npz'))['s2']
+            s2 = np.load(os.path.join(self.data_dir, "cauvery", 'npy', f'cauvery_{idx:06}.npz'))['s2']
             # Conversion to RGB and setting pixel value range [0-255]
-            image = image[[3, 2, 1], :, :]
+            s2 = s2[[3, 2, 1], :, :]
+            temp = s2.astype(np.int64)
+            image = []
+            for t in range(temp.shape[-1]):  # (B x H x W x T) shape of the input image
+                if np.any(temp[:, :, :, t]):
+                    image.append(temp[:, :, :, t])
+            if len(image) == 0:
+                image = np.ones_like(np.transpose(s2, (3, 0, 1, 2)))
+            image = np.mean(np.array(image), 0)
             image[0, :, :] = (image[0, :, ] / np.max(image[0, :, ])) * 255
             image[1, :, :] = (image[1, :, ] / np.max(image[1, :, ])) * 255
             image[2, :, :] = (image[2, :, ] / np.max(image[2, :, ])) * 255
             image = np.transpose(image, (1, 2, 0))
-            return image
+            return image, image
         idx = self.full_idxs[idx]
         img = Image.open(self.root / 'imgs' / f'{idx}.jpeg').convert('RGB')
         return img
@@ -147,8 +155,8 @@ class CropSegmentationDataset(SustainBenchDataset):
         f1 = f1_score(y_true, y_pred, average='binary', pos_label=1)
         acc = accuracy_score(y_true, y_pred)
         precision_recall = precision_recall_fscore_support(y_true, y_pred, average='binary', pos_label=1)
-        print('Dice/ F1 score:', f1)
-        print('Accuracy score:', acc)
+        print('Dice/ F1 score:', f1, end="\t")
+        print('Accuracy score:', acc, end="\t")
         print("Precision recall fscore", precision_recall)
         return f1, acc, precision_recall
 

@@ -71,7 +71,7 @@ dataset = get_dataset(dataset='crop_seg', filled_mask=True, download=True)
 
 BACKBONE = 'resnet34'
 preprocess_input = get_preprocessing_fn(BACKBONE)
-checkpoint_path = 'model_weights/cropseg_weights.pth.tar'
+checkpoint_path = 'model_weights/cropseg_weights_filled.pth.tar'
 
 # Get the training set
 test_data = dataset.get_subset('test', transform=get_preprocessing(preprocess_input), preprocess_fn=True)
@@ -151,6 +151,7 @@ model.eval()
 epoch_test_acc = []
 epoch_test_loss = []
 epoch_test_dice = []
+outputs = None
 for x, y in test_loader:
     with torch.no_grad():
         if is_cuda:
@@ -158,6 +159,10 @@ for x, y in test_loader:
             y = y.cuda()
         output = model(x.float())
         output = torch.squeeze(output)
+        if outputs is None:
+            outputs = output.detach().cpu().numpy()
+        else:
+            outputs = np.vstack([outputs, output.detach().cpu().numpy()])
         y = y[:, 0, :, :]
         loss = criterion(output, y)
         epoch_test_loss.append(loss.item())
@@ -165,7 +170,9 @@ for x, y in test_loader:
         f1, acc, precision_recall = results
         epoch_test_acc.append(acc)
         epoch_test_dice.append(f1)
-
+import cv2
+for i, img in enumerate(outputs):
+    cv2.imwrite(f'../results_cauvery/{i}.png', img*255)
 avg_test_acc = np.round(sum(epoch_test_acc) / len(epoch_test_acc), decimal_precision)
 avg_test_loss = np.round(sum(epoch_test_loss) / len(epoch_test_loss), decimal_precision)
 avg_test_dice_score = np.round(sum(epoch_test_dice) / len(epoch_test_dice), decimal_precision)

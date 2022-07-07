@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from pathlib import Path
 from torchvision import transforms
+import albumentations as albu
 
 class SustainBenchDataset:
     """
@@ -454,7 +455,9 @@ class SustainBenchSubset(SustainBenchDataset):
                 x = np.array(x)
                 y = np.array(y)
                 x = self.transform(image=x)['image']
-                y = y.transpose(2, 0, 1).astype('float32') / 255
+                y = y.astype('float32')
+                y = albu.Resize(224, 224)(image=y)['image']
+                y = np.where(y > 0.5, 1, 0)
             else:
                 x = self.transform(x)
                 y = self.transform(y)

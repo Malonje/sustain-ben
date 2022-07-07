@@ -143,33 +143,45 @@ def main(args):
 
     # TESTING
     model.eval()
-    predictions = []
-    output = []
-    fields = []
+    predictions = None
+    outputs = None
+    inputs = None
     with torch.no_grad():
         for x, y in test_loader:
             if is_cuda:
                 x = x.cuda()
                 y = y.cuda()
-            for _ in x:
-                out = model(_.float())
-                out = torch.mean(out, dim=0)
-                out = torch.where(out < 0.5, 0, 1)
-                output.append(out)
-                fields.append(get_individual_fields(out))
-
-            # output = torch.flatten(output)
-            # y = torch.flatten(y)
-            # idx = torch.where(y == 1)
-            # print(idx)
-            # output = output[idx]
-            predictions.extend(batch_output)
-    return predictions
+            output = model(x.float())
+            output = torch.squeeze(output)
+            output = output.reshape((-1, 224, 224))
+            if outputs is None:
+                inputs = x.detach().cpu().numpy()
+                outputs = y.detach().cpu().numpy()
+                predictions = output.detach().cpu().numpy()
+            else:
+                inputs = np.vstack([inputs, x.detach().cpu().numpy()])
+                outputs = np.vstack([outputs, y.detach().cpu().numpy()])
+                predictions = np.vstack([predictions, output.detach().cpu().numpy()])
+            # y = y[:, 0, :, :]
+            # loss = criterion(output, y)
+            # epoch_test_loss.append(loss.item())
+            results, resultsstr = dataset.eval(output.detach().cpu().numpy(), y.detach().cpu().numpy(), metadata=None)
+            # f1, acc, precision_recall = results
+            # epoch_test_acc.append(acc)
+            # epoch_test_dice.append(f1)
+    # return predictions
+    import cv2
+    for i, img in enumerate(outputs):
+        cv2.imwrite(f'../results_cauvery/{i}_mask.png', np.expand_dims(outputs[i], -1) * 255)
+        cv2.imwrite(f'../results_cauvery/{i}_predn.png', np.expand_dims(predictions[i], -1) * 255)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cropseg_weights', type=str,
                         help="Cuda or CPU",
-                        default='model_weights/cropseg_weights.pth.tar')
+                        default='model_weights/cropseg_weights_filled.pth.tar')
+    parser.add_argument('--path_to_cauvery_images', type=str,
+                        help="Cuda or CPU",
+                        default='data/')
     main(parser.parse_args())
