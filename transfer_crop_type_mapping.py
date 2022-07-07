@@ -106,7 +106,7 @@ def train_dl_model(model, model_name, dataloaders, args):
         print('clip value: ', clip_val)
 
     # set up information lists for visdom
-    vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
+    # vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
     loss_fn = loss_fns.get_loss_fn(model_name)
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val_f1 = 0
@@ -114,7 +114,7 @@ def train_dl_model(model, model_name, dataloaders, args):
     for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
 
-        vis_logger.reset_epoch_data()
+        # vis_logger.reset_epoch_data()
 
         for split in ['train', 'val'] if not args.eval_on_test else ['test']:
             train_data = dataloaders.get_subset(split)
@@ -189,13 +189,13 @@ def train_dl_model(model, model_name, dataloaders, args):
 
                         # vis_logger.update_progress('train', 'gradnorm', gradnorm)
                         loss = loss.cpu()
-                        with torch.no_grad():
-                            vis_logger.update_progress('train', 'gradnorm', gradnorm)
+                        # with torch.no_grad():
+                        #     vis_logger.update_progress('train', 'gradnorm', gradnorm)
 
-                    if cm_cur is not None:  # TODO: not sure if we need this check?
+                    # if cm_cur is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update metrics
-                        with torch.no_grad():
-                            vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
+                        # with torch.no_grad():
+                        #     vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
                         # vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
 
                 # with torch.no_grad():
@@ -208,35 +208,38 @@ def train_dl_model(model, model_name, dataloaders, args):
                 # del preds
 
             if split in ['test']:
-                vis_logger.record_epoch(split, i, args.country, save=False,
-                                        save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
+                print("Test:", total_correct, num_pixels, total_correct / num_pixels)
+                # vis_logger.record_epoch(split, i, args.country, save=False,
+                #                         save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
             else:
-                vis_logger.record_epoch(split, i, args.country)
+                print("Train:", total_correct, num_pixels, total_correct / num_pixels)
+                # vis_logger.record_epoch(split, i, args.country)
 
             if split == 'val':
-                val_f1 = metrics.get_f1score(vis_logger.epoch_data['val_cm'], avg=True)
-                print("val at epoch=", i, val_f1)
-
-                if val_f1 > best_val_f1:
-                    torch.save(model.state_dict(), os.path.join(args.save_dir, args.name + "_best"))
-                    best_val_f1 = val_f1
-                    print("best till now saved at epoch", i, args.name + "_best")
-
-                    # """  # commenting the next lines to check now if it is working or not
-                    if args.save_best:
-                        # TODO: Ideally, this would save any batch except the last one so that the saved images
-                        #  are not only the remainder from the last batch
-                        vis_logger.record_batch(inputs, cloudmasks, targets.float(), preds, confidence,
-                                                NUM_CLASSES[args.country], split,
-                                                args.include_doy, args.use_s1, args.use_s2,
-                                                model_name, args.time_slice, save=True, var_length=args.var_length,
-                                                save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-
-                        vis_logger.record_epoch(split, i, args.country, save=True,
-                                                save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-
-                        vis_logger.record_epoch('train', i, args.country, save=True,
-                                                save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
+                print("Validation:", total_correct, num_pixels, total_correct/num_pixels)
+            #     val_f1 = metrics.get_f1score(vis_logger.epoch_data['val_cm'], avg=True)
+            #     print("val at epoch=", i, val_f1)
+            #
+            #     if val_f1 > best_val_f1:
+            #         torch.save(model.state_dict(), os.path.join(args.save_dir, args.name + "_best"))
+            #         best_val_f1 = val_f1
+            #         print("best till now saved at epoch", i, args.name + "_best")
+            #
+            #         # """  # commenting the next lines to check now if it is working or not
+            #         if args.save_best:
+            #             # TODO: Ideally, this would save any batch except the last one so that the saved images
+            #             #  are not only the remainder from the last batch
+            #             vis_logger.record_batch(inputs, cloudmasks, targets.float(), preds, confidence,
+            #                                     NUM_CLASSES[args.country], split,
+            #                                     args.include_doy, args.use_s1, args.use_s2,
+            #                                     model_name, args.time_slice, save=True, var_length=args.var_length,
+            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
+            #
+            #             vis_logger.record_epoch(split, i, args.country, save=True,
+            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
+            #
+            #             vis_logger.record_epoch('train', i, args.country, save=True,
+            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
 
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None):
