@@ -13,7 +13,7 @@ import metrics
 import util
 import numpy as np
 import pickle
-
+from sustainbench import logger
 from torch import autograd
 
 from constants import *
@@ -171,7 +171,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                             if "length" not in sat:
                                 inputs[sat].to(args.device)
                     targets.to(args.device)
-                    inputs = torch.cat((inputs['s1'], inputs['s2']), dim=1)
+                    inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.to("cuda")
                     targets = targets.to("cuda")

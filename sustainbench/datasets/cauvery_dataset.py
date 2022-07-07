@@ -168,10 +168,12 @@ class CauveryDataset(SustainBenchDataset):
         s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        if l8.shape[2] == 0 or l8.shape[3] == 0:
+            l8 = np.zeros_like(s2)
 
-        s1=s1.transpose(1,2,3,0)
-        s2=s2.transpose(1,2,3,0)
-        l8=l8.transpose(1,2,3,0)
+        s1 = s1.transpose(1,2,3,0)
+        s2 = s2.transpose(1,2,3,0)
+        l8 = l8.transpose(1,2,3,0)
 
         # s1 = (mask * s1.transpose(3,0,1,2))[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
         # s2 = (mask * s2.transpose(3,0,1,2))[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]

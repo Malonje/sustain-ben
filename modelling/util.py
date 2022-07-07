@@ -35,6 +35,8 @@ def get_num_bands(kwargs):
 
     num_bands = {'s1': 0, 's2': 0, 'planet': 0 }
 
+    if kwargs.get('use_l8'):
+        num_bands['l8'] = L8_NUM_BANDS
     if kwargs.get('use_s1'):
         num_bands['s1'] = S1_NUM_BANDS + added_doy
     if kwargs.get('use_s2'):
@@ -42,7 +44,7 @@ def get_num_bands(kwargs):
     if kwargs.get('use_planet'):
         num_bands['planet'] = PLANET_NUM_BANDS + added_doy + added_indices
    
-    num_bands['all'] = num_bands['s1'] + num_bands['s2'] + num_bands['planet'] 
+    num_bands['all'] = num_bands['l8'] + num_bands['s1'] + num_bands['s2'] + num_bands['planet']
     return num_bands
 
 
