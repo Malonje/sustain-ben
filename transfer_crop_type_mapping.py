@@ -212,11 +212,14 @@ def train_dl_model(model, model_name, dataloaders, args):
                 # vis_logger.record_epoch(split, i, args.country, save=False,
                 #                         save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
             else:
-                print("Train:", total_correct, num_pixels, total_correct / num_pixels)
+                if split == 'val':
+                    print("Validation:", total_correct, num_pixels, total_correct / num_pixels)
+                else:
+                    print("Train:", total_correct, num_pixels, total_correct / num_pixels)
                 # vis_logger.record_epoch(split, i, args.country)
 
-            if split == 'val':
-                print("Validation:", total_correct, num_pixels, total_correct/num_pixels)
+            # if split == 'val':
+            #     print("Validation:", total_correct, num_pixels, total_correct/num_pixels)
             #     val_f1 = metrics.get_f1score(vis_logger.epoch_data['val_cm'], avg=True)
             #     print("val at epoch=", i, val_f1)
             #
