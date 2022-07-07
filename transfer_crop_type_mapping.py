@@ -208,14 +208,14 @@ def train_dl_model(model, model_name, dataloaders, args):
                 # del preds
 
             if split in ['test']:
-                print("Test:", total_correct, num_pixels, total_correct / num_pixels)
+                print(f"[Test] #Correct: {total_correct}, #Pixels {num_pixels}, Accuracy: {total_correct/num_pixels}")
                 # vis_logger.record_epoch(split, i, args.country, save=False,
                 #                         save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
             else:
                 if split == 'val':
-                    print("Validation:", total_correct, num_pixels, total_correct / num_pixels)
+                    print(f"[Validation] #Correct: {total_correct}, #Pixels {num_pixels}, Accuracy: {total_correct/num_pixels}")
                 else:
-                    print("Train:", total_correct, num_pixels, total_correct / num_pixels)
+                    print(f"[Train] #Correct: {total_correct}, #Pixels {num_pixels}, Accuracy: {total_correct/num_pixels}")
                 # vis_logger.record_epoch(split, i, args.country)
 
             # if split == 'val':
