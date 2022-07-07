@@ -14,7 +14,7 @@ MULTI_RES_MODELS = ['fcn_crnn']
 
 S1_NUM_BANDS = 3
 L8_NUM_BANDS = 8
-PLANET_NUM_BANDS = 4
+PLANET_NUM_BANDS = 8
 
 LABEL_DIR = "raster_npy"
 S1_DIR = "s1_npy"

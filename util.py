@@ -312,8 +312,10 @@ def get_num_bands(kwargs):
     if kwargs.get('include_indices') and (kwargs.get('use_s2') or kwargs.get('use_planet')):
         added_indices = 2
 
-    num_bands = {'s1': 0, 's2': 0, 'planet': 0}
+    num_bands = {'l8': 0, 's1': 0, 's2': 0, 'planet': 0}
 
+    if kwargs.get('use_l8'):
+        num_bands['l8'] = L8_NUM_BANDS
     if kwargs.get('use_s1'):
         num_bands['s1'] = S1_NUM_BANDS + added_doy
     if kwargs.get('use_s2'):
@@ -321,7 +323,7 @@ def get_num_bands(kwargs):
     if kwargs.get('use_planet'):
         num_bands['planet'] = PLANET_NUM_BANDS + added_doy + added_indices
 
-    num_bands['all'] = num_bands['s1'] + num_bands['s2'] + num_bands['planet']
+    num_bands['all'] = num_bands['l8'] + num_bands['s1'] + num_bands['s2'] + num_bands['planet']
     return num_bands
 
 
@@ -386,7 +388,7 @@ def get_train_parser():
                         default='../model_weights/cropseg_weights.pth.tar')
     parser.add_argument('--croptype_weights', type=str,
                         help="Pretrained weights for Crop Type Mapping",
-                        default='../model_weights/croptype_weights.pth.tar')
+                        default=None)
     parser.add_argument('--cropyield_weights', type=str,
                         help="Pretrained weights for Yield Prediction",
                         default='../model_weights/cropyield_weights.pth.tar')
@@ -410,7 +412,7 @@ def get_train_parser():
 
     parser.add_argument('--loss_weight', type=str2bool,
                         help="weighted cross entropy loss",
-                        default=True)
+                        default=False)
     parser.add_argument('--gamma', type=int,
                         help="weighting factor for focal loss",
                         default=2)

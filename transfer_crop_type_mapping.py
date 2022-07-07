@@ -123,11 +123,10 @@ def train_dl_model(model, model_name, dataloaders, args):
             model.train() if split == ['train'] else model.eval()
             nclass = len(CM_LABELS[args.country]) + 1
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
-            for inputs, targets, cloudmasks in tqdm(train_loader):
-
-                targets[targets > 4] = 0
+            for inputs, targets in tqdm(train_loader):
+                # targets[targets > 4] = 0
                 targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
-                mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
+                mask = torch.arange(1, nclass)  # tensor([1, 2, 3, 4])
 
                 targets = torch.index_select(targets, 3, mask)
 

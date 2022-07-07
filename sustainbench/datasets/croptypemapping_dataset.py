@@ -10,11 +10,11 @@ import json
 
 import torchvision.transforms as transforms
 from sklearn.metrics import f1_score, accuracy_score
-from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS
+from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS, MEANS, STDS
 
 # BAND STATS
 
-IMG_DIM = 64
+IMG_DIM = (32, 32)
 
 PLANET_DIM = 212
 
@@ -188,7 +188,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         for t in range(temp.shape[-1]):
             if np.any(temp[:, :, :, t]):
                 s2.append(temp[:, :, :, t])
-        temp = images['planet'].astype(np.int64)
+        temp = images['l8'].astype(np.int64)
         planet = []
         for t in range(temp.shape[-1]):
             if np.any(temp[:, :, :, t]):
@@ -198,15 +198,27 @@ class CropTypeMappingDataset(SustainBenchDataset):
         s2 = np.asarray(s2)
         planet = np.asarray(planet)
 
-        s1 = torch.from_numpy(s1)
-        s2 = torch.from_numpy(s2.astype(np.int32))
-        planet = torch.from_numpy(planet.astype(np.int32))
+        s1 = torch.from_numpy(s1).permute(1, 0, 2, 3)
+        s2 = torch.from_numpy(s2).permute(1, 0, 2, 3)
+        planet = torch.from_numpy(planet).permute(1, 0, 2, 3)
 
         if self.resize_planet:
+            s1 = s1.permute(3, 0, 1, 2)
+            s1 = transforms.Resize(IMG_DIM)(s1)
+            s1 = s1.permute(1, 2, 3, 0)
+            s2 = s2.permute(3, 0, 1, 2)
+            s2 = transforms.Resize(IMG_DIM)(s2)
+            s2 = s2.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.Resize(IMG_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
         else:
+            s1 = s1.permute(3, 0, 1, 2)
+            s1 = transforms.CenterCrop(PLANET_DIM)(s1)
+            s1 = s1.permute(1, 2, 3, 0)
+            s2 = s2.permute(3, 0, 1, 2)
+            s2 = transforms.CenterCrop(PLANET_DIM)(s2)
+            s2 = s2.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.CenterCrop(PLANET_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
@@ -215,23 +227,23 @@ class CropTypeMappingDataset(SustainBenchDataset):
         if self.calculate_bands:
             ndvi_s2 = (s2[BANDS['s2']['10']['NIR']] - s2[BANDS['s2']['10']['RED']]) / (
                         s2[BANDS['s2']['10']['NIR']] + s2[BANDS['s2']['10']['RED']])
-            ndvi_planet = (planet[BANDS['planet']['4']['NIR']] - planet[BANDS['planet']['4']['RED']]) / (
-                        planet[BANDS['planet']['4']['NIR']] + planet[BANDS['planet']['4']['RED']])
+            ndvi_planet = (planet[BANDS['l8']['8']['NIR']] - planet[BANDS['l8']['8']['RED']]) / (
+                        planet[BANDS['l8']['8']['NIR']] + planet[BANDS['l8']['8']['RED']])
 
             gcvi_s2 = (s2[BANDS['s2']['10']['NIR']] / s2[BANDS['s2']['10']['GREEN']]) - 1
-            gcvi_planet = (planet[BANDS['planet']['4']['NIR']] / planet[BANDS['planet']['4']['GREEN']]) - 1
+            gcvi_planet = (planet[BANDS['l8']['8']['NIR']] / planet[BANDS['l8']['8']['GREEN']]) - 1
 
             ## added this to remove nans
             ndvi_s2[(s2[BANDS['s2']['10']['NIR'], :, :, :] + s2[BANDS['s2']['10']['RED'], :, :, :]) == 0] = 0
             gcvi_s2[s2[BANDS['s2']['10']['GREEN'], :, :, :] == 0] = 0
             ndvi_planet[
-                (planet[BANDS['planet']['4']['NIR'], :, :, :] + planet[BANDS['planet']['4']['RED'], :, :, :]) == 0] = 0
-            gcvi_planet[planet[BANDS['planet']['4']['GREEN'], :, :, :] == 0] = 0
+                (planet[BANDS['l8']['8']['NIR'], :, :, :] + planet[BANDS['l8']['8']['RED'], :, :, :]) == 0] = 0
+            gcvi_planet[planet[BANDS['l8']['8']['GREEN'], :, :, :] == 0] = 0
 
         if self.normalize:
             s1 = self.normalization(s1, 's1')
             s2 = self.normalization(s2, 's2')
-            planet = self.normalization(planet, 'planet')
+            planet = self.normalization(planet, 'l8')
 
         # Concatenate calculated bands
         if self.calculate_bands:
@@ -329,7 +341,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         stds = STDS[satellite][self.country]
         grid = (grid - means[:num_bands].reshape(num_bands, 1, 1, 1)) / stds[:num_bands].reshape(num_bands, 1, 1, 1)
 
-        if satellite not in ['s1', 's2', 'planet']:
+        if satellite not in ['s1', 's2', 'l8']:
             raise ValueError("Incorrect normalization parameters")
         return grid
 
