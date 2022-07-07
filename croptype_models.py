@@ -123,7 +123,10 @@ def get_model(model_name, **kwargs):
         num_bands = get_num_bands(kwargs)['all']
         model = make_UNetFC_model(n_class=3, n_channel=num_bands,
                                       timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
-
+    elif model_name == 'unet-fc-yield':
+        num_bands = get_num_bands(kwargs)['all']
+        model = YieldEstimation(num_bands, 1, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
+        model = model.cuda()
 
     else:
         raise ValueError(f"Model {model_name} unsupported, check `model_name` arg") 
@@ -138,28 +141,74 @@ class DateExtractor(nn.Module):
 
         feats = 16
         self.en3 = conv_block(in_channel, feats*4, feats*4)
-        self.pool_3 = nn.MaxPool3d(kernel_size=2, stride=2, padding=0)
         self.en4 = conv_block(feats*4, feats*8, feats*8)
-        self.pool_4 = nn.MaxPool3d(kernel_size=2, stride=2, padding=0)
         self.center_in = center_in(feats*8, feats*16)
-
-        self.features = nn.Linear(timesteps, feats*8)
-        self.date_predictions = nn.Linear(timesteps, n_classes)
+        self.features = nn.Linear(feats*16*7*7, feats*16)
+        self.date_predictions = nn.Linear(feats*16, n_classes)
 
         self.logsoftmax = nn.LogSoftmax(dim=1)
         self.dropout = nn.Dropout(p=dropout, inplace=True)
 
     def forward(self, x):
+        # print(x.shape)
         en3 = self.en3(x)
-        pool_3 = self.pool_3(en3)
-        en4 = self.en4(pool_3)
-        pool_4 = self.pool_4(en4)
-        center_in = self.center_in(pool_4)
+        en4 = self.en4(en3)
+        center_in = self.center_in(en4)
+        # shape
+        # print("center in sh", center_in.shape)
         center_in = center_in.permute(0, 2, 1, 3, 4)
-        center_in = center_in.reshape(-1, np.prod(final.shape[2:]))
+        # print("center in sh", center_in.shape)
+        shape = center_in.shape
+        center_in = center_in.reshape(-1, np.prod(center_in.shape[2:]))
+        # shape T X (BXHXW)
+        # print("center in sh", center_in.shape)
         center_in = self.dropout(center_in)
+        # center_in = center_in.permute(2, 0, 1, 3, 4)
         timestep_features = self.features(center_in)
+        # print(timestep_features.shape)
         y = self.date_predictions(timestep_features)
+        y = y.reshape(shape[0], shape[1], -1)
+        # print(y.shape)
+        # print(y)
         y = self.logsoftmax(y)
+        # print(y)
+        return y
+
+class YieldEstimation(nn.Module):
+    def __init__(self, in_channel, n_classes, timesteps, dropout):
+        super(YieldEstimation, self).__init__()
+
+        feats = 16
+        self.en3 = conv_block(in_channel, feats*4, feats*4)
+        self.en4 = conv_block(feats*4, feats*8, feats*8)
+        self.center_in = center_in(feats*8, feats*16)
+        self.features = nn.Linear(feats*16*7*7, feats*16)
+        self.crop_yield = nn.Linear(feats*16*timesteps, n_classes)
+
+        self.dropout = nn.Dropout(p=dropout, inplace=True)
+
+    def forward(self, x):
+        # print(x.shape)
+        en3 = self.en3(x)
+        en4 = self.en4(en3)
+        center_in = self.center_in(en4)
+        # shape
+        # print("center in sh", center_in.shape)
+        center_in = center_in.permute(0, 2, 1, 3, 4)
+        # print("center in sh", center_in.shape)
+        shape = center_in.shape
+        center_in = center_in.reshape(-1, np.prod(center_in.shape[2:]))
+        # shape T X (BXHXW)
+        # print("center in sh", center_in.shape)
+        center_in = self.dropout(center_in)
+        # center_in = center_in.permute(2, 0, 1, 3, 4)
+        timestep_features = self.features(center_in)
+        # print(timestep_features.shape)
+        timestep_features = timestep_features.reshape(shape[0], -1)
+        y = self.crop_yield(timestep_features)
+        # print(y.shape)
+        # print(y)
+        # y = self.logsoftmax(y)
+        # print(y)
         return y
 

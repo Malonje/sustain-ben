@@ -61,8 +61,13 @@ class CropYieldDataset(SustainBenchDataset):
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='official', seed=111, filled_mask=False):
         self._version = version
-        self._data_dir = "/home/parichya/Documents/pycrop-yield-prediction/yield_data/crop_yield" # TODO: implementation only
-        # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
+         # TODO: implementation only
+        # self._split_scheme = split_scheme
+        if split_scheme=='cauvery':
+            self._data_dir = root_dir
+        else:
+            self._data_dir = "/home/parichya/Documents/pycrop-yield-prediction/yield_data/crop_yield"
+            # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
         
         self.root = Path(self._data_dir)
         self.seed = int(seed)
@@ -72,59 +77,67 @@ class CropYieldDataset(SustainBenchDataset):
         self._split_names = {'train': 'Train', 'val': 'Val', 'test': 'Test'}
 
         self._split_scheme = split_scheme
-        if self._split_scheme not in ['official', 'usa', 'argentina', 'brazil','cauvery']:
+        if self._split_scheme not in ['official', 'usa', 'argentina', 'brazil', 'cauvery']:
             raise ValueError(f'Split scheme {self._split_scheme} not recognized')
         if self._split_scheme == 'official':
             self._country = 'usa'
         if self._split_scheme in ['cauvery']:
             self._country = 'cauvery'
-        else:
-            self._country = self._split_scheme
 
-        if self.split_scheme=='cauvery':
+
+        if split_scheme=='cauvery':
             train_data, train_labels, train_years = self._load_split(split='train', country=self._country)
             val_data, val_labels, val_years = self._load_split(split='val', country=self._country)
             test_data, test_labels, test_years = self._load_split(split='test', country=self._country)
 
+            train_mask = np.ones_like(train_labels) * self._split_dict['train']
+            val_mask = np.ones_like(val_labels) * self._split_dict['val']
+            test_mask = np.ones_like(test_labels) * self._split_dict['test']
 
-        train_data, train_labels, train_years, train_keys = self._load_split(split='train', country=self._country)
-        val_data, val_labels, val_years, val_keys = self._load_split(split='val', country=self._country)
-        test_data, test_labels, test_years, test_keys = self._load_split(split='test', country=self._country)
-        
-        train_mask = np.ones_like(train_labels) * self._split_dict['train']
-        val_mask = np.ones_like(val_labels) * self._split_dict['val']
-        test_mask = np.ones_like(test_labels) * self._split_dict['test']
-        
-        self._histograms = np.concatenate([train_data, val_data, test_data])
-        self._split_array = np.concatenate([train_mask, val_mask, test_mask])
+            self._histograms = np.concatenate([train_data, val_data, test_data])
+            self._split_array = np.concatenate([train_mask, val_mask, test_mask])
 
-        if self.split_scheme=='cauvery':
             self.metadata = pd.DataFrame(data={
             "year": np.concatenate([train_years, val_years, test_years]),
             "y": np.concatenate([train_labels, val_labels, test_labels]),
             })
             self._y_array = self.metadata['y'].to_numpy()
             self._y_size = 1
+            self._metadata_fields = ['y', 'year']
+            self._metadata_array = torch.from_numpy(self.metadata[self._metadata_fields].to_numpy())
+
             super().__init__(root_dir, download, split_scheme)
 
-        self.metadata = pd.DataFrame(data={
-            "key": np.concatenate([train_keys, val_keys, test_keys]),
-            "year": np.concatenate([train_years, val_years, test_years]),
-            "y": np.concatenate([train_labels, val_labels, test_labels]),
-        })
-        
-        self.metadata['region1'], self.metadata['region2'], _ = zip(*[k.split("_") for k in self.metadata["key"]])
-        self.initialize_region_locs()
-        self.metadata['loc1'] = [self.region1_to_loc1(reg) for reg in self.metadata['region1']]
-        self.metadata['loc2'] = [self.region2_to_loc2(reg) for reg in self.metadata['region2']]
-        
-        self._y_array = self.metadata['y'].to_numpy()
-        self._y_size = 1
-        
-        self._metadata_fields = ['y', 'loc1', 'loc2', 'year']
-        self._metadata_array = torch.from_numpy(self.metadata[self._metadata_fields].to_numpy())
+        else:
+            train_data, train_labels, train_years, train_keys = self._load_split(split='train', country=self._country)
+            val_data, val_labels, val_years, val_keys = self._load_split(split='val', country=self._country)
+            test_data, test_labels, test_years, test_keys = self._load_split(split='test', country=self._country)
 
-        super().__init__(root_dir, download, split_scheme)
+            train_mask = np.ones_like(train_labels) * self._split_dict['train']
+            val_mask = np.ones_like(val_labels) * self._split_dict['val']
+            test_mask = np.ones_like(test_labels) * self._split_dict['test']
+
+            self._histograms = np.concatenate([train_data, val_data, test_data])
+            self._split_array = np.concatenate([train_mask, val_mask, test_mask])
+
+            self.metadata = pd.DataFrame(data={
+                "key": np.concatenate([train_keys, val_keys, test_keys]),
+                "year": np.concatenate([train_years, val_years, test_years]),
+                "y": np.concatenate([train_labels, val_labels, test_labels]),
+            })
+
+            self.metadata['region1'], self.metadata['region2'], _ = zip(*[k.split("_") for k in self.metadata["key"]])
+            self.initialize_region_locs()
+            self.metadata['loc1'] = [self.region1_to_loc1(reg) for reg in self.metadata['region1']]
+            self.metadata['loc2'] = [self.region2_to_loc2(reg) for reg in self.metadata['region2']]
+
+            self._y_array = self.metadata['y'].to_numpy()
+            self._y_size = 1
+
+            self._metadata_fields = ['y', 'loc1', 'loc2', 'year']
+            self._metadata_array = torch.from_numpy(self.metadata[self._metadata_fields].to_numpy())
+
+            super().__init__(root_dir, download, split_scheme)
         
     def initialize_region_locs(self):
         self.region1s = np.unique(self.metadata['region1'])
@@ -151,24 +164,35 @@ class CropYieldDataset(SustainBenchDataset):
             raise ValueError(f'Loading split {split} not supported')
         
         fname = split_fname[split]
-        
+
         country_data_dir = os.path.join(self._data_dir, country)
         if not os.path.isdir(country_data_dir):
             raise FileNotFoundError(f"Data directory for country {country} not found at {country_data_dir}")
 
 
-        data_file = os.path.join(country_data_dir, f'{fname}_hists.npz')
-        data = np.load(data_file)['data']
-        if self.split_scheme=='cauvery':
-            df=pd.read_csv('/home/parichya/Documents/cauvery/cauvery_dataset.csv')
-            idx_ = df.index[df['split'] == fname].tolist()
+
+        if self.split_scheme == 'cauvery':
+            data_file = os.path.join(country_data_dir,'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
+            # data_file_2= os.path.join(country_data_dir,'yield_npz/S2_hist.npz')
+            # data2 = np.load(data_file_2)['data'].astype(float)
+            data = np.load(data_file)['data'].astype(float)
+            df=pd.read_csv(os.path.join(country_data_dir,'cauvery_dataset_l8final.csv')).reset_index(drop=True)
+            # print(df)
+            idx_ = df.index[df['SPLIT_YIELD'] == fname].tolist()
+            # print(idx_)
             data=data[idx_]
+            # data2=data2[idx_]
             # labels_file = os.path.join()#path to csv)
+            # data=np.concatenate((data,data2), axis=-1)
+            # print(data.shape)
+
             labels = df['YIELD'].to_numpy()[idx_]
-            years = df['YEAR'].to_numpy()[idx_]
+            years = df['YEAR'].to_numpy()[idx_].astype(int)
             return data, labels, years
 
         else:
+            data_file = os.path.join(country_data_dir, f'{fname}_hists.npz')
+            data = np.load(data_file)['data']
 
             labels_file = os.path.join(country_data_dir, f'{fname}_yields.npz')
             years_file = os.path.join(country_data_dir, f'{fname}_years.npz')
@@ -177,7 +201,8 @@ class CropYieldDataset(SustainBenchDataset):
             labels = np.load(labels_file)['data']
             years = np.load(years_file)['data'].astype(int)
             keys = np.load(keys_file)['data']
-        
+        # print(data)
+        # print(labels)
         return data, labels, years, keys
     
     def get_input(self, idx):
@@ -185,6 +210,18 @@ class CropYieldDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         img = self._histograms[idx]
+
+        if self.split_scheme == 'cauvery':
+            # satellite_bands_ps=[0,3,2,1]
+            # img = img[:,:,satellite_bands_ps]
+            satellite_bands_l8=[3,4,1,2,5,6,7]
+            img = img[:,:,satellite_bands_l8]
+            # satellite_bands_S2=[2,6,0,1,8,9,3]
+            # img = img[:,:,satellite_bands_S2]
+        else:
+            modis_bands=[0,1,2,3,5,6,7] #training planet scope
+            img = img[:,:,modis_bands]
+
         return img
 
     def crop_yield_metrics(self, y_true, y_pred):

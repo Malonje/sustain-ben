@@ -21,6 +21,8 @@ def l1_l2_loss(pred, true, l1_weight, scores_dict):
     ----------
     loss: the regularized mse loss
     """
+    # print('pred shape:',pred.shape)
+    # print('teue shape:',true.shape)
     loss = F.mse_loss(pred, true)
 
     scores_dict["l2"].append(loss.item())

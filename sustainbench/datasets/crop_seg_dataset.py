@@ -53,7 +53,8 @@ class CropSegmentationDataset(SustainBenchDataset):
         if split_scheme == "cauvery":
             self._data_dir = root_dir
         else:
-            self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
+            # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
+            self._data_dir='/home/parichya/Documents/sustainbench/data/crop_delineation/'
 
         self._split_dict = {'train': 0, 'val': 1, 'test': 2}
         self._split_names = {'train': 'Train', 'val': 'Val', 'test': 'Test'}

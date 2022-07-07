@@ -71,7 +71,7 @@ dataset = get_dataset(dataset='crop_seg', filled_mask=True, download=True)
 
 BACKBONE = 'resnet34'
 preprocess_input = get_preprocessing_fn(BACKBONE)
-checkpoint_path = 'model_weights/'
+checkpoint_path = '/home/parichya/Documents/crop_seg_weights/model_weights/'
 
 run_name = logger.init(project='dilineation', reinit=True)
 

@@ -97,6 +97,78 @@ def learning_rate_scheduler(epoch):
     '''
     print("Set Learning Rate : {}".format(lr))
     return lr
+def get_fields(segmentation_mask):
+
+    segmentation_mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
+    row = []
+    col = []
+    segmentation_mask_reader = segmentation_mask.reshape(-1)
+    n_nodes = len(segmentation_mask_reader)
+    for node in range(n_nodes):
+        idxs = np.unravel_index(node, segmentation_mask.shape)
+        if segmentation_mask[idxs] == 0:
+            col.append(n_nodes)
+        else:
+            for i in range(len(idxs)):
+                if idxs[i] > 0:
+                    new_idxs = list(idxs)
+                    new_idxs[i] -= 1
+                    new_node = np.ravel_multi_index(new_idxs, segmentation_mask.shape)
+                    if segmentation_mask_reader[new_node] != 0:
+                        col.append(new_node)
+        while len(col) > len(row):
+            row.append(node)
+
+    row = np.array(row, dtype=np.int32)
+    col = np.array(col, dtype=np.int32)
+    data = np.ones(len(row), dtype=np.int32)
+
+    graph = csr_matrix((np.array(data), (np.array(row), np.array(col))),
+                       shape=(n_nodes + 1, n_nodes + 1))
+    n_components, labels = connected_components(csgraph=graph)
+
+    background_label = labels[-1]
+    solution = np.zeros(segmentation_mask.shape, dtype=segmentation_mask.dtype)
+    # return solution
+    # print('SOLUTION:', solution)
+    solution_writer = solution.reshape(-1)
+    for node in range(n_nodes):
+        label = labels[node]
+        if label < background_label:
+            solution_writer[node] = label + 1
+        elif label > background_label:
+            solution_writer[node] = label
+
+    return solution
+
+def calc_iou_delineation(pred,true_):
+    mask=true_
+    predict=pred
+    unique_val_mask=np.unique(mask) # find unique value in mask take them except 0
+    predict_= get_fields(predict) # label individual fields in prediction
+    metrics=[]
+
+    for i in range(0,len(unique_val_mask)):
+        mask_val = unique_val_mask[i]
+        if mask_val==0:
+            continue
+        mask_ = np.where(mask==mask_val, 1, 0)      #gives array having value 1 at pos if it is equal to value at that pos otherwise 0
+        pred_over_mask = predict_ * mask_          # multiply the mask array for that unique val to prediction arrray
+        uniq_pred=np.unique(pred_over_mask)        # find unique vals in the resulting array / unqiue plots to intersect with mask for given val
+
+        for j in range(0,len(uniq_pred)):          # cal iou for each unique val
+            uniq_val=uniq_pred[j]
+            if uniq_val == 0:
+                continue
+            pred_array = np.where(predict_==uniq_val, 1, 0)
+            #find mlou for mask_ and pred_array
+            metrics.append(calc_iou( pred_array , mask_ ))
+            # print(pred_array)
+            # print(mask_)
+    if len(metrics)>0:
+        return(sum(metrics)/len(metrics))
+    else:
+        return 0
 
 
 #Set the variables here for training the model
@@ -153,6 +225,7 @@ epoch_test_loss = []
 epoch_test_dice = []
 outputs = None
 for x, y in test_loader:
+
     with torch.no_grad():
         if is_cuda:
             x = x.cuda()
@@ -177,4 +250,37 @@ avg_test_acc = np.round(sum(epoch_test_acc) / len(epoch_test_acc), decimal_preci
 avg_test_loss = np.round(sum(epoch_test_loss) / len(epoch_test_loss), decimal_precision)
 avg_test_dice_score = np.round(sum(epoch_test_dice) / len(epoch_test_dice), decimal_precision)
 print(f"\t==> Average Test Accuracy: {avg_test_acc}, Average Test Dice. : {avg_test_dice_score}, Average Test loss: {avg_test_loss}")
+
+# for x, y in test_loader:
+#     with torch.no_grad():
+#
+#         if is_cuda:
+#             x = x.cuda()
+#             y = y.cuda()
+#
+#         y = y[:, 0, :, :]
+#         fields = []
+#         output = []
+#         for k in range(len(x)):
+#             _ = x[k]
+#             out = model(_.float())
+#             out = torch.where(out < 0.5, 0, 1)
+#             predict_ = get_fields(out)
+#             # indivual_plots_predicitons=[]
+#             # for i in range(1, np.max(predict_)+1):
+#             #     x1, y1 = np.min(np.where(predict_ == i), 1)
+#             #     x2, y2 = np.max(np.where(predict_ == i), 1)
+#             #     indivual_plots_predicitons.append(np.where(predict_[x1:x2+1, y1:y2+1] == i, 1, 0))
+#             # fields.append(indivual_plots_predicitons)
+#             output.append(calc_iou_delineation(out,y[k]))
+#
+#         batch_iou.append(sum(output)/len(output))
+#         # predictions.extend(fields)
+#
+# print('prediction iou :', sum(batch_iou)/len(batch_iou))
+
+# avg_test_acc = np.round(sum(epoch_test_acc) / len(epoch_test_acc), decimal_precision)
+# avg_test_loss = np.round(sum(epoch_test_loss) / len(epoch_test_loss), decimal_precision)
+# avg_test_dice_score = np.round(sum(epoch_test_dice) / len(epoch_test_dice), decimal_precision)
+# print(f"\t==> Average Test Accuracy: {avg_test_acc}, Average Test Dice. : {avg_test_dice_score}, Average Test loss: {avg_test_loss}")
 

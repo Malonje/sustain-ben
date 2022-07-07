@@ -17,9 +17,9 @@ from sklearn.metrics import r2_score
 
 
 
-# checkpoint_path='/home/parichya/Documents/predict_result/'
+checkpoint_path='/home/parichya/Documents/predict_result/'
 
-# run_name = logger.init(project='crop_prediction', reinit=True)
+run_name = logger.init(project='transfer_crop_yield', reinit=True)
 
 # Get the training set
 # cleaned_data_path="data/img_output",
@@ -41,14 +41,15 @@ from sklearn.metrics import r2_score
 # )
 
 
-dataset = get_dataset(dataset='crop_yield',split_scheme="cauvery")
+dataset = get_dataset(dataset='crop_yield',split_scheme="cauvery",root_dir='/home/parichya/Documents/')
 train_data = dataset.get_subset('train')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
 val_data   = dataset.get_subset('val')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
 batch_size=32
 # Prepare the standard data loader
 train_loader = get_train_loader('standard', train_data, batch_size=batch_size)
 val_loader   = get_train_loader('standard', val_data, batch_size=batch_size)
-dropout=0.5
+# dropout=0.5
+dropout=0.2
 savedir=Path("/home/parichya/Documents/sustainbench/results_prediction_transfer")
 dense_features=None
 train_steps=25000
@@ -67,7 +68,7 @@ sigma_b=0.01
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model = convnet.ConvModel(
-    in_channels=9,
+    in_channels=10,
     dropout=dropout,
     dense_features=dense_features,
     savedir=savedir,
@@ -84,14 +85,18 @@ is_cuda=True
 if is_cuda:
     model = model.model.cuda()
 
-# model_type = model_type
-# model_weight = model_weight
-# model_bias = model_bias
+# for module, param in zip(model.convblocks.modules(), model.convblocks.parameters()):
+#     param.requires_grad = False
 
+# best_epoch=94
 
+# pretrained = torch.load(os.path.join(checkpoint_path, f"epoch{best_epoch}.checkpoint.pth.tar"))
+# model.load_state_dict(pretrained['model_state_dict'])
 
 optimizer = torch.optim.Adam(
-            [pam for pam in model.parameters()],
+            # model.fc.parameters(), #TRAINING LAST LAYER ONLY
+            # [pam for pam in model.parameters()],
+            model.parameters(),
             lr=starter_learning_rate,
             weight_decay=weight_decay,
         )
@@ -109,7 +114,7 @@ min_loss = np.inf
 best_state = model.state_dict()
 model=model.float()
 
-
+prev_val_rmse=1000000
 
 if patience is not None:
     epochs_without_improvement = 0
@@ -123,8 +128,9 @@ for epoch in range(num_epochs):
     running_train_scores = defaultdict(list)
 
     for train_x, train_y in train_loader:
+        # train_x=train_x[:,:,:,[0,1,2,3,4,5,6]]
         optimizer.zero_grad()
-        print('train_X size:',train_x.shape)
+        # print('train_X size:',train_x.shape)
         if is_cuda:
             train_x = train_x.cuda()
             train_y = train_y.cuda()
@@ -135,7 +141,14 @@ for epoch in range(num_epochs):
         train_x=train_x.float()
         train_y=train_y.float()
         pred_y = model(train_x)
-        pred_y=np.squeeze(pred_y)
+        train_y=train_y.reshape(-1,1)
+        # print('input:',train_x.shape)
+        # print('pred:',pred_y.shape)
+        # print('pred_Array:',pred_y)
+        # print('y_train shape:',train_y.shape)
+        # # pred_y=np.squeeze(pred_y)
+        #
+        # print('after squeeze pred_Array:',pred_y)
         # print('pred:',(pred_y).dtype)
         # print('y:',(train_y).dtype)
         loss, running_train_scores = l1_l2_loss(
@@ -160,11 +173,7 @@ for epoch in range(num_epochs):
         )
 
     running_val_scores = defaultdict(list)
-    checkpoint = {
-                                'model_state_dict': model.state_dict(),
-                                'optimizer_state_dict': optimizer.state_dict(),
-                }
-    torch.save(checkpoint, os.path.join(checkpoint_path, f"epoch{epoch+1}.checkpoint.pth.tar"))
+
     model.eval()
 
 
@@ -196,14 +205,25 @@ for epoch in range(num_epochs):
     # print(float(train_output_strings[0].split(':')[1])
     print("TRAINING: {}".format(", ".join(train_output_strings)))
     print("VALIDATION: {}".format(", ".join(val_output_strings)))
+    print(train_output_strings)
+    val_rmse=float(val_output_strings[3].split(':')[1])
+    if prev_val_rmse > val_rmse:
+        prev_val_rmse=val_rmse
+        checkpoint = {
+                                'model_state_dict': model.state_dict(),
+                                'optimizer_state_dict': optimizer.state_dict(),
+                }
+        torch.save(checkpoint, os.path.join(checkpoint_path, f"BESTepochS2.checkpoint.pth.tar"))
 
     logger.log({
-        f"Train RMSE": float(train_output_strings[2].split(':')[1]),
+        f"Train RMSE": float(train_output_strings[3].split(':')[1]),
         f"Train L2": float(train_output_strings[0].split(':')[1]),
-        f"Train loss" : float(train_output_strings[1].split(':')[1]),
-        f"Val RMSE": float(train_output_strings[2].split(':')[1]),
+        f"Train L1" : float(train_output_strings[1].split(':')[1]),
+        f"Train loss" : float(train_output_strings[2].split(':')[1]),
+        f"Val RMSE": float(val_output_strings[3].split(':')[1]),
         f"Val L2" : float(val_output_strings[0].split(':')[1]),
-        f"Val Loss" : float(val_output_strings[1].split(':')[1]),
+        f"Val Loss" : float(val_output_strings[2].split(':')[1]),
+        f"Val L1" : float(val_output_strings[1].split(':')[1]),
 
     })
 
@@ -224,6 +244,6 @@ for epoch in range(num_epochs):
         #     model.load_state_dict(best_state)
         #     print("Early stopping!")
         #     break
-
+print('VALIDATION RMSE :', prev_val_rmse)
 model.load_state_dict(best_state)
-print( train_scores, val_scores)
+# print( train_scores, val_scores)

@@ -56,7 +56,6 @@ def get_preprocessing(preprocessing_fn):
     ]
     return albu.Compose(_transform)
 
-
 def get_individual_fields(segmentation_mask):
     segmentation_mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
     row = []
@@ -100,7 +99,7 @@ def get_individual_fields(segmentation_mask):
     for i in range(1, np.max(solution)+1):
         x1, y1 = np.min(np.where(solution == i), 1)
         x2, y2 = np.max(np.where(solution == i), 1)
-        fields.append(solution[x1:x2, y1:y2])
+        fields.append(np.where(solution[x1:x2+1, y1:y2+1]==i,1,0))
     return fields
 
 
@@ -174,6 +173,20 @@ def main(args):
     for i, img in enumerate(outputs):
         cv2.imwrite(f'../results_cauvery/{i}_mask.png', np.expand_dims(outputs[i], -1) * 255)
         cv2.imwrite(f'../results_cauvery/{i}_predn.png', np.expand_dims(predictions[i], -1) * 255)
+    #         for _ in x:
+    #             out = model(_.float())
+    #             out = torch.mean(out, dim=0)
+    #             out = torch.where(out < 0.5, 0, 1)
+    #             output.append(out)
+    #             fields.append(get_individual_fields(out))
+    #
+    #         # output = torch.flatten(output)
+    #         # y = torch.flatten(y)
+    #         # idx = torch.where(y == 1)
+    #         # print(idx)
+    #         # output = output[idx]
+    #         predictions.extend(fields)
+    # return predictions
 
 
 if __name__ == "__main__":

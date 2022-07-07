@@ -356,6 +356,9 @@ def get_train_parser():
     parser.add_argument('--shuffle', type=str2bool,
                         help="shuffle dataset between epochs?",
                         default=True)
+    parser.add_argument('--use_l8', type=str2bool,
+                        help="use l8 data?",
+                        default=False)
     parser.add_argument('--use_s1', type=str2bool,
                         help="use s1 data?",
                         default=False)
