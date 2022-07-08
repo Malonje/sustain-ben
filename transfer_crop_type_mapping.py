@@ -100,7 +100,8 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args):
-    splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    # splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    sat_names = ""
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -144,16 +145,19 @@ def train_dl_model(model, model_name, dataloaders, args):
                     temp_inputs = None
                     if args.use_s1:
                         temp_inputs = inputs['s1']
+                        sat_names += "S1"
                     if args.use_s2:
                         if temp_inputs is None:
                             temp_inputs = inputs['s2']
                         else:
-                            temp_inputs = torch.cat((temp_inputs, inputs['s2']))
+                            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+                        sat_names += "S2"
                     if args.use_planet:
                         if temp_inputs is None:
                             temp_inputs = inputs['planet']
                         else:
-                            temp_inputs = torch.cat((temp_inputs, inputs['planet']))
+                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
+                        sat_names += "L8"
 
                     inputs = temp_inputs
                     # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
@@ -201,7 +205,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                     print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                     if best_val < accuracy:
                         best_val = accuracy
-                        torch.save(model.state_dict(), "../model_weights/crop_type_best_val(l8).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/crop_type_best_val({sat_names}).pth.tar")
                 else:
                     logger.log({
                         f"Train Accuracy": accuracy,

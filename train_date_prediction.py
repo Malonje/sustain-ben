@@ -101,6 +101,7 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    sat_names = ""
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -145,8 +146,28 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         for sat in inputs:
                             if "length" not in sat:
                                 inputs[sat] = inputs[sat].to(args.device)
+
                     targets = targets.to(args.device)
-                    inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
+
+                    temp_inputs = None
+                    if args.use_s1:
+                        temp_inputs = inputs['s1']
+                        sat_names += "S1"
+                    if args.use_s2:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['s2']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+                        sat_names += "S2"
+                    if args.use_planet:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['planet']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
+                        sat_names += "L8"
+
+                    inputs = temp_inputs
+                    # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     # inputs = inputs.cuda()
@@ -201,13 +222,13 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                     if best_val_f1 < f1:
                         best_val_f1 = f1
-                        torch.save(model.state_dict(), "../model_weights/date_prediction_best_val_f1(l8+s1+s2).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_f1({sat_names}).pth.tar")
                     if best_val_acc < accuracy:
                         best_val_acc = accuracy
-                        torch.save(model.state_dict(), "../model_weights/date_prediction_best_val_acc(l8+s1+s2).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_acc({sat_names}).pth.tar")
                     if best_val_rmse > rmse:
                         best_val_rmse = rmse
-                        torch.save(model.state_dict(), "../model_weights/date_prediction_best_val_rmse(l8+s1+s2).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_rmse({sat_names}).pth.tar")
                 else:
                     logger.log({
                         f"Train F1": f1,
