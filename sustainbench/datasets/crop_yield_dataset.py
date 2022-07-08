@@ -85,7 +85,7 @@ class CropYieldDataset(SustainBenchDataset):
             self._country = 'cauvery'
 
 
-        if split_scheme=='cauvery':
+        if split_scheme == 'cauvery':
             train_data, train_labels, train_years = self._load_split(split='train', country=self._country)
             val_data, val_labels, val_years = self._load_split(split='val', country=self._country)
             test_data, test_labels, test_years = self._load_split(split='test', country=self._country)
@@ -169,14 +169,12 @@ class CropYieldDataset(SustainBenchDataset):
         if not os.path.isdir(country_data_dir):
             raise FileNotFoundError(f"Data directory for country {country} not found at {country_data_dir}")
 
-
-
         if self.split_scheme == 'cauvery':
-            data_file = os.path.join(country_data_dir,'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
+            data_file = os.path.join(country_data_dir, 'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
             # data_file_2= os.path.join(country_data_dir,'yield_npz/S2_hist.npz')
             # data2 = np.load(data_file_2)['data'].astype(float)
             data = np.load(data_file)['data'].astype(float)
-            df=pd.read_csv(os.path.join(country_data_dir,'cauvery_dataset_l8final.csv')).reset_index(drop=True)
+            df=pd.read_csv(os.path.join(country_data_dir, 'cauvery_dataset.csv')).reset_index(drop=True)
             # print(df)
             idx_ = df.index[df['SPLIT_YIELD'] == fname].tolist()
             # print(idx_)

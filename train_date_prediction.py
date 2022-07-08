@@ -27,7 +27,8 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 
 run_name = logger.init(project='date_prediction', reinit=True)
-checkpoint_path='/home/parichya/Documents/date_prediction/'
+checkpoint_path = 'model_weights/'
+
 def evaluate_split(model, model_name, split_loader, device, loss_weight, weight_scale, gamma, num_classes, country,
                    var_length):
     total_loss = 0
@@ -99,27 +100,25 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
-    splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    # splits = ['train', 'val'] if not args.eval_on_test else ['test']
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
 
     # set up information lists for visdom
-    vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
+    # vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
     loss_fn = nn.NLLLoss(reduction="none")
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val_f1 = 0
-
-    model = model.cuda()
-    train_rmse=11111111
-    train_acc=0
+    best_val_acc = 0
+    best_val_rmse = 10000000
 
     for i in range(args.epochs if not args.eval_on_test else 1):
         ep_f1, ep_rmse, ep_acc = [], [], []
         print('Epoch: {}'.format(i))
 
-        vis_logger.reset_epoch_data()
+        # vis_logger.reset_epoch_data()
 
         for split in ['train', 'val'] if not args.eval_on_test else ['test']:
             train_data = dataloaders.get_subset(split)
@@ -130,28 +129,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
 
             for inputs, targets in train_loader:
-                # print(targets)
                 # targets = F.one_hot(targets, num_classes=4)
-                # targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
-                # targets=np.asarray(targets, dtype=np.int)
-                #
-                # targets_hot_enc=[]
-                # for k in range(targets.shape[0]):
-                #     # print(targets[k])
-                #     b = np.zeros((args.num_timesteps, 4))
-                #     sowing, transplanting, harvesting = targets[k]
-                #     print(sowing, transplanting, harvesting)
-                #     b[sowing, 0] = 1
-                #     b[transplanting, 1] = 1
-                #     b[harvesting, 2] = 1
-                #     b[:, 3] = np.ones_like(b[:, 0])
-                #     b[sowing, 3] = 0
-                #     b[transplanting, 3] = 0
-                #     b[harvesting, 3] = 0
-                #     targets_hot_enc.append(b)
-                # targets = torch.Tensor(targets_hot_enc)
-                # print(np.where(targets==41))
-                # for i
                 # mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
                 #
                 # targets = torch.index_select(targets, 3, mask)
@@ -161,45 +139,26 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
                 with torch.set_grad_enabled(True):
                     if not args.var_length:
-                        # inputs.to(args.device)
                         for a in inputs:
-                            inputs[a].to(args.device)
-
-                        # if hres_inputs is not None: hres_inputs.to(args.device)
+                            inputs[a] = inputs[a].to(args.device)
                     else:
                         for sat in inputs:
                             if "length" not in sat:
-                                inputs[sat].to(args.device)
-                    targets.to(args.device)
+                                inputs[sat] = inputs[sat].to(args.device)
+                    targets = targets.to(args.device)
                     inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
-                    inputs = inputs.to("cuda")
-                    targets = targets.to("cuda")
-
-                    # inputs = inputs.float()
+                    inputs = inputs.float()
                     # inputs = inputs.cuda()
-                    # inputs = inputs.type(torch.FloatTensor).cuda()
-                    # targets = targets.type(torch.FloatTensor).cuda()
-                    # inputs=torch.Tensor(inputs, dtype=torch.float)
-                    preds = model(inputs.float())
-                    # print(inputs.dtype, targets.dtype, preds.dtype)
-                    # preds = preds.type(torch.FloatTensor)
-                    # print(preds)
-                    # print(preds[0].item, targets[0].item())
 
+                    preds = model(inputs)
+                    # print(preds.shape, targets.shape)
                     loss = torch.sum(loss_fn(preds, targets))
                     results, results_str = dataset.eval(preds.detach().cpu().numpy(), targets.detach().cpu().numpy())
                     f1, rmse, acc = results
                     ep_f1.append(f1)
                     ep_rmse.append(rmse)
                     ep_acc.append(acc)
-                    # print(results_str)
-                    # loss, cm_cur, total_correct, num_pixels, confidence = evaluate(model_name, preds, targets,
-                    #                                                                args.country, loss_fn=loss_fn,
-                    #                                                                reduction="sum",
-                    #                                                                loss_weight=args.loss_weight,
-                    #                                                                weight_scale=args.weight_scale,
-                    #                                                                gamma=args.gamma)
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
@@ -220,78 +179,45 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
                         # vis_logger.update_progress('train', 'gradnorm', gradnorm)
                         loss = loss.cpu()
-                        with torch.no_grad():
-                            vis_logger.update_progress('train', 'gradnorm', gradnorm)
+                        # with torch.no_grad():
+                        #     vis_logger.update_progress('train', 'gradnorm', gradnorm)
 
-                    # if cm_cur is not None:  # TODO: not sure if we need this check?
-                    #     # If there are valid pixels, update metrics
-                    #     with torch.no_grad():
-                    #         vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
-                    #     # vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
-                # with torch.no_grad():
-                #     vis_logger.record_batch(inputs, cloudmasks, targets.float(), preds, confidence,
-                #                         NUM_CLASSES[args.country], split,
-                #                         args.include_doy, args.use_s1, args.use_s2,
-                #                         model_name, args.time_slice, var_length=args.var_length)
+            accuracy = sum(ep_acc) / len(ep_acc)
+            f1 = sum(ep_f1) / len(ep_f1)
+            rmse = sum(ep_rmse) / len(ep_rmse)
 
-                # del loss  # adding this as the gpu usage was increasing with time
-                # del preds
+            if split in ['test']:
+                print(f"[Test] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}")
+                # print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+            else:
+                if split == 'val':
+                    logger.log({
+                        f"Validation F1": f1,
+                        f"Validation RMSE": rmse,
+                        f"Validation Accuracy": accuracy,
+                        "X-Axis": i,
+                    })
+                    print(f"[Validation] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}")
+                    # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                    if best_val_f1 < f1:
+                        best_val_f1 = f1
+                        torch.save(model.state_dict(), "../model_weights/date_prediction_best_val_f1(l8+s1+s2).pth.tar")
+                    if best_val_acc < accuracy:
+                        best_val_acc = accuracy
+                        torch.save(model.state_dict(), "../model_weights/date_prediction_best_val_acc(l8+s1+s2).pth.tar")
+                    if best_val_rmse > rmse:
+                        best_val_rmse = rmse
+                        torch.save(model.state_dict(), "../model_weights/date_prediction_best_val_rmse(l8+s1+s2).pth.tar")
+                else:
+                    logger.log({
+                        f"Train F1": f1,
+                        f"Train RMSE": rmse,
+                        f"Train Accuracy": accuracy,
+                        "X-Axis": i
+                    })
+                    print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}")
+                    # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
-            # if split in ['test']:
-            #     vis_logger.record_epoch(split, i, args.country, save=False,
-            #                             save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-            # else:
-            #     vis_logger.record_epoch(split, i, args.country)
-
-            # if split == 'val':
-            #     val_f1 = metrics.get_f1score(vis_logger.epoch_data['val_cm'], avg=True)
-            #     print("val at epoch=", i, val_f1)
-            #
-            #     if val_f1 > best_val_f1:
-            #         torch.save(model.state_dict(), os.path.join(args.save_dir, args.name + "_best"))
-            #         best_val_f1 = val_f1
-            #         print("best till now saved at epoch", i, args.name + "_best")
-            #
-            #         # """  # commenting the next lines to check now if it is working or not
-            #         if args.save_best:
-            #             # TODO: Ideally, this would save any batch except the last one so that the saved images
-            #             #  are not only the remainder from the last batch
-            #             vis_logger.record_batch(inputs, cloudmasks, targets.float(), preds, confidence,
-            #                                     NUM_CLASSES[args.country], split,
-            #                                     args.include_doy, args.use_s1, args.use_s2,
-            #                                     model_name, args.time_slice, save=True, var_length=args.var_length,
-            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-            #
-            #             vis_logger.record_epoch(split, i, args.country, save=True,
-            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-            #
-            #             vis_logger.record_epoch('train', i, args.country, save=True,
-            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-
-        print(f"[EPOCH {i:03d}] => F1: {sum(ep_f1)/len(ep_f1)},RMSE: {sum(ep_rmse)/len(ep_rmse)}, Acc: {sum(ep_acc)/len(ep_acc)}")
-        train_rmse_=sum(ep_rmse)/len(ep_rmse)
-        train_acc_= sum(ep_acc)/len(ep_acc)
-        train_dice = sum(ep_f1)/len(ep_f1)
-        if train_rmse > train_rmse_:
-            train_rmse=train_rmse_
-            checkpoint = {
-                                'model_state_dict': model.state_dict(),
-                                'optimizer_state_dict': optimizer.state_dict(),
-                }
-            torch.save(checkpoint, os.path.join(checkpoint_path, f"BEST_RMSE_epoch.checkpoint.pth.tar"))
-        if train_acc < train_acc_:
-            train_acc=train_acc_
-            checkpoint = {
-                                'model_state_dict': model.state_dict(),
-                                'optimizer_state_dict': optimizer.state_dict(),
-                }
-            torch.save(checkpoint, os.path.join(checkpoint_path, f"BEST_ACC_epoch.checkpoint.pth.tar"))
-
-        logger.log({
-        f"Train RMSE": train_rmse_,
-        f"Train ACC": train_acc_,
-        f"Train F1": train_dice,
-        })
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None, dataset=None):
     """ Trains the model on the inputs

@@ -28,50 +28,64 @@ partition_to_idx = {
     "test": 2,
 }
 
-BANDS = {'s1': {'VV': 0, 'VH': 1, 'RATIO': 2},
+BANDS = {'l8': {'8': {'UBLUE': 0, 'BLUE': 1, 'GREEN': 2, 'RED': 3, 'NIR': 4, 'SWIR1': 5, 'SWIR2': 6, 'THERMAL': 7}},
+         's1': {'VV': 0, 'VH': 1, 'RATIO': 2},
          's2': {'10': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'RDED1': 3, 'RDED2': 4, 'RDED3': 5, 'NIR': 6, 'RDED4': 7,
                        'SWIR1': 8, 'SWIR2': 9},
                 '4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}},
          'planet': {'4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}}}
 
-MEANS = {'l8': {'cauvery': torch.Tensor([12368.1361551, 12661.92114163, 13650.40757402, 13527.14502986,
-                                         19340.70235415, 14114.5518405, 11896.20883162, 29226.3843278])},
-         's1': {'cauvery': torch.Tensor([6.28422240e+04, 6.32034097e+04, 3.60242752e+01]),
-                'ghana': torch.Tensor([-10.50, -17.24, 1.17]),
-                'southsudan': torch.Tensor([-9.02, -15.26, 1.15])},
-         's2': {'cauvery': torch.Tensor([444.24931557, 457.38388575, 436.65186128, 508.0436634, 627.0239963,
-                                         680.004681, 670.04099671, 703.3274434, 436.3003278, 331.22561816]),  # DUMMY
-                'ghana': torch.Tensor(
+MEANS = {'l8': {'cauvery': np.array([9094.22952295, 9660.10121921, 11549.65248343, 11781.45798216,
+                                     17696.67523116, 14023.37411014, 12002.04631372, 25758.76033058])},
+         's1': {'cauvery': np.array([5.05328385e+04, 5.06283933e+04, 3.44156868e+01]),
+                'ghana': np.array([-10.50, -17.24, 1.17]),
+                'southsudan': np.array([-9.02, -15.26, 1.15]),
+                'tanzania': np.array([-9.80, -17.05, 1.30])},
+         's2': {'cauvery': np.array([3533.29838044, 3586.85039805, 3491.22664833, 3937.02731823, 4318.46637238,
+                                     4494.57259037, 4513.15719641, 4545.55351609, 2832.31792097, 2260.36166447]),
+                'ghana': np.array(
              [2620.00, 2519.89, 2630.31, 2739.81, 3225.22, 3562.64, 3356.57, 3788.05, 2915.40, 2102.65]),
-                'southsudan': torch.Tensor(
-                    [2119.15, 2061.95, 2127.71, 2277.60, 2784.21, 3088.40, 2939.33, 3308.03, 2597.14, 1834.81])},
-         'planet': {'cauvery': torch.Tensor([189.38657473, 218.87043081, 247.32755279, 479.41628529]),  # DUMMY
-                    'ghana': torch.Tensor([1264.81, 1255.25, 1271.10, 2033.22]),
-                    'southsudan': torch.Tensor([1091.30, 1092.23, 1029.28, 2137.77])},
-         's2_cldfltr': {'ghana': torch.Tensor(
+                'southsudan': np.array(
+                    [2119.15, 2061.95, 2127.71, 2277.60, 2784.21, 3088.40, 2939.33, 3308.03, 2597.14, 1834.81]),
+                'tanzania': np.array(
+                    [2551.54, 2471.35, 2675.69, 2799.99, 3191.33, 3453.16, 3335.64, 3660.05, 3182.23, 2383.79]),
+                'germany': np.array(
+                    [1991.37, 2026.92, 2136.22, 6844.82, 9951.98, 11638.58, 3664.66, 12375.27, 7351.99, 5027.96])},
+         'planet': {'ghana': np.array([1264.81, 1255.25, 1271.10, 2033.22]),
+                    'southsudan': np.array([1091.30, 1092.23, 1029.28, 2137.77]),
+                    'tanzania': np.array([1014.16, 1023.31, 1114.17, 1813.49])},
+         's2_cldfltr': {'ghana': np.array(
              [1362.68, 1317.62, 1410.74, 1580.05, 2066.06, 2373.60, 2254.70, 2629.11, 2597.50, 1818.43]),
-                        'southsudan': torch.Tensor(
-                            [1137.58, 1127.62, 1173.28, 1341.70, 1877.70, 2180.27, 2072.11, 2427.68, 2308.98,
-                             1544.26])}}
+                        'southsudan': np.array(
+                            [1137.58, 1127.62, 1173.28, 1341.70, 1877.70, 2180.27, 2072.11, 2427.68, 2308.98, 1544.26]),
+                        'tanzania': np.array(
+                            [1148.76, 1138.87, 1341.54, 1517.01, 1937.15, 2191.31, 2148.05, 2434.61, 2774.64,
+                             2072.09])}}
 
-STDS = {'l8': {'cauvery': torch.Tensor([9909.46258226, 9772.88653258, 9093.53284106, 9096.19521172,
-                                        8922.29167776, 6468.6509666,  5430.69077713, 19781.63175576])},
-        's1': {'cauvery': torch.Tensor([1.29914865e+04, 1.21026555e+04, 7.12003524e+00]),
-               'ghana': torch.Tensor([3.57, 4.86, 5.60]),
-               'southsudan': torch.Tensor([4.49, 6.68, 21.75])},
-        's2': {'cauvery': torch.Tensor([1652.44922717, 1504.62790188, 1444.78959425, 1554.34698307, 1656.84349257,
-                                        1727.76967515, 1717.28851599, 1757.27593784, 1109.57370268, 879.75099205]),  # DUMMY
-               'ghana': torch.Tensor(
+STDS = {'l8': {'cauvery': np.array([4287.37102194, 4409.46500442, 4561.73164467, 4683.97323962,
+                                    5927.10408736, 4944.42758823, 4116.9320306, 14412.41851867])},
+        's1': {'cauvery': np.array([2.75263293e+04, 2.74576680e+04, 7.21510934e+00]),
+               'ghana': np.array([3.57, 4.86, 5.60]),
+               'southsudan': np.array([4.49, 6.68, 21.75]),
+               'tanzania': np.array([3.53, 4.78, 16.61])},
+        's2': {'cauvery': np.array([3324.92163253, 3117.99506711, 3031.43557525, 3065.36310218, 2681.5744481,
+                                    2531.16029773, 2642.18692608, 2427.90602159, 1270.25714356, 1136.60107948]),
+                'ghana': np.array(
             [2171.62, 2085.69, 2174.37, 2084.56, 2058.97, 2117.31, 1988.70, 2099.78, 1209.48, 918.19]),
-               'southsudan': torch.Tensor(
-                   [2113.41, 2026.64, 2126.10, 2093.35, 2066.81, 2114.85, 2049.70, 2111.51, 1320.97, 1029.58])},
-        'planet': {'cauvery': torch.Tensor([1.66349306e+04, 1.66781339e+04, 9.51789817e+00, 9.51789817e+00]),  # DUMMY
-                   'ghana': torch.Tensor([602.51, 598.66, 637.06, 966.27]),
-                   'southsudan': torch.Tensor([526.06, 517.05, 543.74, 1022.14])},
+               'southsudan': np.array(
+                   [2113.41, 2026.64, 2126.10, 2093.35, 2066.81, 2114.85, 2049.70, 2111.51, 1320.97, 1029.58]),
+               'tanzania': np.array(
+                   [2290.97, 2204.75, 2282.90, 2214.60, 2182.51, 2226.10, 2116.62, 2210.47, 1428.33, 1135.21]),
+               'germany': np.array(
+                   [1943.62, 1755.82, 1841.09, 5703.38, 5104.90, 5136.54, 1663.27, 5125.05, 3682.57, 3273.71])},
+        'planet': {'ghana': np.array([602.51, 598.66, 637.06, 966.27]),
+                   'southsudan': np.array([526.06, 517.05, 543.74, 1022.14]),
+                   'tanzania': np.array([492.33, 492.71, 558.90, 833.65])},
         's2_cldfltr': {
-            'ghana': torch.Tensor([511.19, 495.87, 591.44, 590.27, 745.81, 882.05, 811.14, 959.09, 964.64, 809.53]),
-            'southsudan': torch.Tensor(
-                [548.64, 547.45, 660.28, 677.55, 896.28, 1066.91, 1006.01, 1173.19, 1167.74, 865.42])}}
+            'ghana': np.array([511.19, 495.87, 591.44, 590.27, 745.81, 882.05, 811.14, 959.09, 964.64, 809.53]),
+            'southsudan': np.array(
+                [548.64, 547.45, 660.28, 677.55, 896.28, 1066.91, 1006.01, 1173.19, 1167.74, 865.42]),
+            'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
 
 class CauveryDataset(SustainBenchDataset):
@@ -103,10 +117,11 @@ class CauveryDataset(SustainBenchDataset):
     }
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='cauvery',
-                 resize_planet=False, calculate_bands=True, normalize=True):
+                 resize_planet=False, calculate_bands=True, normalize=True, task="date_prediction"):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
+        self.task = task
 
         self._version = version
         if split_scheme == 'cauvery':
@@ -123,7 +138,7 @@ class CauveryDataset(SustainBenchDataset):
 
         self._split_array = split_df['partition'].values
 
-        self._metadata_fields = ['id', 'PLOT_ID', 'SOWING_DAY', 'TRANSPLANTING_DAY', 'HARVESTING_DAY']
+        self._metadata_fields = ['id', 'PLOT_ID', 'SOWING_DAY', 'TRANSPLANTING_DAY', 'HARVESTING_DAY', 'YIELD']
         self._y_array = torch.from_numpy(split_df[self._metadata_fields].to_numpy())
         self._y_size = len(self._y_array)
         self._metadata_array = torch.from_numpy(split_df[self._metadata_fields].to_numpy())
@@ -149,7 +164,7 @@ class CauveryDataset(SustainBenchDataset):
 
         s1 = images['s1'].astype(np.int64)
         s2 = images['s2'].astype(np.int64)
-        l8 = images['l8'].astype(np.int64)
+        planet = images['l8'].astype(np.int64)
         # planet = images['planet'].astype(np.int64)
 
         mask = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
@@ -167,24 +182,20 @@ class CauveryDataset(SustainBenchDataset):
         # print(s1.shape, s2.shape)
         s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        if l8.shape[2] == 0 or l8.shape[3] == 0:
-            l8 = np.zeros_like(s2)
+        planet = (mask_l8 * planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        if planet.shape[2] == 0 or planet.shape[3] == 0:
+            # print(planet.shape)
+            planet = np.zeros((planet.shape[0], planet.shape[1], s2.shape[2], s2.shape[3]))
 
-        s1 = s1.transpose(1,2,3,0)
-        s2 = s2.transpose(1,2,3,0)
-        l8 = l8.transpose(1,2,3,0)
-
-        # s1 = (mask * s1.transpose(3,0,1,2))[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
-        # s2 = (mask * s2.transpose(3,0,1,2))[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
-        # mask = np.load(os.path.join(self.data_dir, self.country, 'truth@3m', f'{self.country}_{loc_id}.npz'))['plot_id']  # For planet
-        # planet = (mask * planet)[top_left_coord[0]:bottom_right_coord[0], top_left_coord[1]:bottom_right_coord[1]]
+        s1 = s1.transpose(1, 2, 3, 0)
+        s2 = s2.transpose(1, 2, 3, 0)
+        planet = planet.transpose(1, 2, 3, 0)
 
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2)
-        l8 = torch.from_numpy(l8)
+        planet = torch.from_numpy(planet)
 
-        # print(s1.shape, s2.shape)
+        # print(l8.shape, s1.shape, s2.shape)
         # planet = torch.from_numpy(planet.astype(np.int32))
 
         if self.resize_planet:
@@ -195,12 +206,12 @@ class CauveryDataset(SustainBenchDataset):
             s2 = s2.permute(3, 0, 1, 2)
             s2 = transforms.Resize(IMG_DIM)(s2)
             s2 = s2.permute(1, 2, 3, 0)
-            l8 = l8.permute(3, 0, 1, 2)
-            l8 = transforms.Resize(IMG_DIM)(l8)
-            l8 = l8.permute(1, 2, 3, 0)
-            # planet = planet.permute(3, 0, 1, 2)
-            # planet = transforms.Resize(IMG_DIM)(planet)
-            # planet = planet.permute(1, 2, 3, 0)
+            # l8 = l8.permute(3, 0, 1, 2)
+            # l8 = transforms.Resize(IMG_DIM)(l8)
+            # l8 = l8.permute(1, 2, 3, 0)
+            planet = planet.permute(3, 0, 1, 2)
+            planet = transforms.Resize(IMG_DIM)(planet)
+            planet = planet.permute(1, 2, 3, 0)
         else:
             s1 = s1.permute(3, 0, 1, 2)
             s1 = transforms.CenterCrop(PLANET_DIM)(s1)
@@ -211,44 +222,47 @@ class CauveryDataset(SustainBenchDataset):
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.CenterCrop(PLANET_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
+        # print(planet.shape, s1.shape, s2.shape)
 
         # Include NDVI and GCVI for s2 and planet, calculate before normalization and numband selection
         if self.calculate_bands:
             ndvi_s2 = (s2[BANDS['s2']['10']['NIR']] - s2[BANDS['s2']['10']['RED']]) / (
                     s2[BANDS['s2']['10']['NIR']] + s2[BANDS['s2']['10']['RED']])
-            # ndvi_planet = (planet[BANDS['planet']['4']['NIR']] - planet[BANDS['planet']['4']['RED']]) / (
-            #         planet[BANDS['planet']['4']['NIR']] + planet[BANDS['planet']['4']['RED']])
+            ndvi_planet = (planet[BANDS['l8']['8']['NIR']] - planet[BANDS['l8']['8']['RED']]) / (
+                    planet[BANDS['l8']['8']['NIR']] + planet[BANDS['l8']['8']['RED']])
 
             gcvi_s2 = (s2[BANDS['s2']['10']['NIR']] / s2[BANDS['s2']['10']['GREEN']]) - 1
-            # gcvi_planet = (planet[BANDS['planet']['4']['NIR']] / planet[BANDS['planet']['4']['GREEN']]) - 1
+            gcvi_planet = (planet[BANDS['l8']['8']['NIR']] / planet[BANDS['l8']['8']['GREEN']]) - 1
 
             ## added this to remove nans
             ndvi_s2[(s2[BANDS['s2']['10']['NIR'], :, :, :] + s2[BANDS['s2']['10']['RED'], :, :, :]) == 0] = 0
             gcvi_s2[s2[BANDS['s2']['10']['GREEN'], :, :, :] == 0] = 0
-            # ndvi_planet[
-            #     (planet[BANDS['planet']['4']['NIR'], :, :, :] + planet[BANDS['planet']['4']['RED'], :, :, :]) == 0] = 0
-            # gcvi_planet[planet[BANDS['planet']['4']['GREEN'], :, :, :] == 0] = 0
+            ndvi_planet[
+                (planet[BANDS['l8']['8']['NIR'], :, :, :] + planet[BANDS['l8']['8']['RED'], :, :, :]) == 0] = 0
+            gcvi_planet[planet[BANDS['l8']['8']['GREEN'], :, :, :] == 0] = 0
 
         if self.normalize:
             s1 = self.normalization(s1, 's1')
             s2 = self.normalization(s2, 's2')
-            l8 = self.normalization(l8, 'l8')
+            planet = self.normalization(planet, 'l8')
             # planet = self.normalization(planet, 'planet')
 
         # Concatenate calculated bands
         if self.calculate_bands:
             s2 = torch.cat((s2, torch.unsqueeze(ndvi_s2, 0), torch.unsqueeze(gcvi_s2, 0)), 0)
-            # planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
+            planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
 
         # s1 = self.pad(s1)
         # s2 = self.pad(s2)
         # planet = self.pad(planet)
-        return {'s1': s1, 's2': s2, 'l8': l8 }
+        return {'s1': s1, 's2': s2, 'l8': planet}
 
     def get_label(self, idx):
         """
         Returns x for a given idx.
         """
+        if self.task == "yield":
+            return torch.Tensor([self.y_array[idx][-1].item()]).type(torch.LongTensor)
         sowing = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
         transplanting = self.y_array[idx][3].item() - 1
         harvesting = self.y_array[idx][4].item() - 1
@@ -340,7 +354,7 @@ class CauveryDataset(SustainBenchDataset):
         stds = STDS[satellite][self.country]
         grid = (grid - means[:num_bands].reshape(num_bands, 1, 1, 1)) / stds[:num_bands].reshape(num_bands, 1, 1, 1)
 
-        if satellite not in ['s1', 's2', 'planet']:
+        if satellite not in ['s1', 's2', 'l8']:
             raise ValueError("Incorrect normalization parameters")
         return grid
 
