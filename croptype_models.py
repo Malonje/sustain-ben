@@ -174,6 +174,7 @@ class DateExtractor(nn.Module):
         # print(y)
         return y
 
+
 class YieldEstimation(nn.Module):
     def __init__(self, in_channel, n_classes, timesteps, dropout):
         super(YieldEstimation, self).__init__()
@@ -182,8 +183,8 @@ class YieldEstimation(nn.Module):
         self.en3 = conv_block(in_channel, feats*4, feats*4)
         self.en4 = conv_block(feats*4, feats*8, feats*8)
         self.center_in = center_in(feats*8, feats*16)
-        self.features = nn.Linear(feats*16*7*7, feats*16)
-        self.crop_yield = nn.Linear(feats*16*timesteps, n_classes)
+        self.features = nn.Linear(feats*16*7*7*timesteps, n_classes)
+        # self.crop_yield = nn.Linear(feats*16*timesteps, n_classes)
 
         self.dropout = nn.Dropout(p=dropout, inplace=True)
 
@@ -197,18 +198,18 @@ class YieldEstimation(nn.Module):
         center_in = center_in.permute(0, 2, 1, 3, 4)
         # print("center in sh", center_in.shape)
         shape = center_in.shape
-        center_in = center_in.reshape(-1, np.prod(center_in.shape[2:]))
+        center_in = center_in.reshape(-1, np.prod(center_in.shape[1:]))
         # shape T X (BXHXW)
         # print("center in sh", center_in.shape)
         center_in = self.dropout(center_in)
         # center_in = center_in.permute(2, 0, 1, 3, 4)
         timestep_features = self.features(center_in)
         # print(timestep_features.shape)
-        timestep_features = timestep_features.reshape(shape[0], -1)
-        y = self.crop_yield(timestep_features)
+        # timestep_features = timestep_features.reshape(shape[0], -1)
+        # y = self.crop_yield(timestep_features)
         # print(y.shape)
         # print(y)
         # y = self.logsoftmax(y)
         # print(y)
-        return y
+        return timestep_features
 

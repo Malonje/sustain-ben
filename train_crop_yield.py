@@ -25,6 +25,11 @@ from sustainbench import get_dataset
 from sustainbench.common.data_loaders import get_train_loader
 import torchvision.transforms as transforms
 import torch.nn.functional as F
+from sustainbench import logger
+from collections import defaultdict
+from models.loss import l1_l2_loss
+
+run_name = logger.init(project='crop_yield', reinit=True)
 
 
 def evaluate_split(model, model_name, split_loader, device, loss_weight, weight_scale, gamma, num_classes, country,
@@ -98,106 +103,87 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
-    splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    # splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    sat_names = ""
+    if args.use_s1:
+        sat_names += "S1"
+    if args.use_s2:
+        sat_names += "S2"
+    if args.use_planet:
+        sat_names += "L8"
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
 
     # set up information lists for visdom
-    vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
-    loss_fn = nn.MSELoss(reduction="none")
+    # vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
+    # loss_fn = nn.MSELoss(reduction="none")
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val_f1 = 0
 
     model = model.cuda()
-
+    best_val_rmse = 10000000
 
     for i in range(args.epochs if not args.eval_on_test else 1):
-        ep_f1, ep_rmse, ep_acc = [], [], []
+        ep_rmse = []
         print('Epoch: {}'.format(i))
 
-        vis_logger.reset_epoch_data()
+        running_train_scores = defaultdict(list)
+
+        # vis_logger.reset_epoch_data()
 
         for split in ['train', 'val'] if not args.eval_on_test else ['test']:
             train_data = dataloaders.get_subset(split)
 
             train_loader = get_train_loader('standard', train_data, args.batch_size)
             model.train() if split == ['train'] else model.eval()
-            # nclass = args.num_timesteps + 1
-            # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
 
-            for inputs, targets in train_loader:
-                # print(targets)
-                # targets = F.one_hot(targets, num_classes=4)
-                # targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
-                # targets=np.asarray(targets, dtype=np.int)
-                #
-                # targets_hot_enc=[]
-                # for k in range(targets.shape[0]):
-                #     # print(targets[k])
-                #     b = np.zeros((args.num_timesteps, 4))
-                #     sowing, transplanting, harvesting = targets[k]
-                #     print(sowing, transplanting, harvesting)
-                #     b[sowing, 0] = 1
-                #     b[transplanting, 1] = 1
-                #     b[harvesting, 2] = 1
-                #     b[:, 3] = np.ones_like(b[:, 0])
-                #     b[sowing, 3] = 0
-                #     b[transplanting, 3] = 0
-                #     b[harvesting, 3] = 0
-                #     targets_hot_enc.append(b)
-                # targets = torch.Tensor(targets_hot_enc)
-                # print(np.where(targets==41))
-                # for i
-                # mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
-                #
-                # targets = torch.index_select(targets, 3, mask)
-
-                # targets = targets.permute(0, 3, 1, 2)
-                # cloudmasks = None
+            for inputs, targets in tqdm(train_loader):
 
                 with torch.set_grad_enabled(True):
                     if not args.var_length:
                         # inputs.to(args.device)
                         for a in inputs:
-                            inputs[a].to(args.device)
+                            inputs[a] = inputs[a].to(args.device)
 
                         # if hres_inputs is not None: hres_inputs.to(args.device)
                     else:
                         for sat in inputs:
                             if "length" not in sat:
-                                inputs[sat].to(args.device)
-                    targets.to(args.device)
-                    inputs = torch.cat((inputs['s1'], inputs['s2']), dim=1)
+                                inputs[sat] = inputs[sat].to(args.device)
+                    targets = targets.to(args.device)
+                    temp_inputs = None
+                    if args.use_s1:
+                        temp_inputs = inputs['s1']
+                    if args.use_s2:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['s2']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+                    if args.use_planet:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['l8']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
+
+                    inputs = temp_inputs
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
-                    inputs = inputs.to("cuda")
-                    targets = targets.to("cuda")
 
-                    # inputs = inputs.float()
-                    # inputs = inputs.cuda()
-                    # inputs = inputs.type(torch.FloatTensor).cuda()
-                    # targets = targets.type(torch.FloatTensor).cuda()
-                    # inputs=torch.Tensor(inputs, dtype=torch.float)
                     preds = model(inputs.float())
-                    # print(inputs.dtype, targets.dtype, preds.dtype)
-                    # preds = preds.type(torch.FloatTensor)
-                    # print(preds)
-                    # print(preds[0].item, targets[0].item())
 
-                    loss = torch.sum(loss_fn(preds, targets))
-                    results, results_str = dataset.eval(preds.detach().cpu().numpy(), targets.detach().cpu().numpy())
-                    f1, rmse, acc = results
-                    ep_f1.append(f1)
-                    ep_rmse.append(rmse)
-                    ep_acc.append(acc)
-                    # print(results_str)
-                    # loss, cm_cur, total_correct, num_pixels, confidence = evaluate(model_name, preds, targets,
-                    #                                                                args.country, loss_fn=loss_fn,
-                    #                                                                reduction="sum",
-                    #                                                                loss_weight=args.loss_weight,
-                    #                                                                weight_scale=args.weight_scale,
-                    #                                                                gamma=args.gamma)
+                    loss, running_train_scores = l1_l2_loss(
+                        preds, targets, 1, running_train_scores
+                    )
+                    # loss = torch.sum(loss_fn(preds, targets))
+                    # results, results_str = dataset.eval(preds.detach().cpu().numpy(), targets.detach().cpu().numpy())
+                    # f1, rmse, acc = results
+                    # ep_rmse.append(rmse)
+                    # if rmse < 0 or loss < 0:
+                    #     print(preds)
+                    #     print(targets)
+                    #     print(rmse, loss.item())
+                    #     exit()
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
@@ -218,54 +204,34 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
                         # vis_logger.update_progress('train', 'gradnorm', gradnorm)
                         loss = loss.cpu()
-                        with torch.no_grad():
-                            vis_logger.update_progress('train', 'gradnorm', gradnorm)
+            # ep_rmse = running_train_scores["RMSE"]
+            # rmse = sum(ep_rmse) / len(ep_rmse)
+            rmse = round(np.array(running_train_scores["RMSE"]).mean(), 5)
 
-                    # if cm_cur is not None:  # TODO: not sure if we need this check?
-                    #     # If there are valid pixels, update metrics
-                    #     with torch.no_grad():
-                    #         vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
-                    #     # vis_logger.update_epoch_all(split, cm_cur, loss, total_correct, num_pixels)
-                # with torch.no_grad():
-                #     vis_logger.record_batch(inputs, cloudmasks, targets.float(), preds, confidence,
-                #                         NUM_CLASSES[args.country], split,
-                #                         args.include_doy, args.use_s1, args.use_s2,
-                #                         model_name, args.time_slice, var_length=args.var_length)
-
-                # del loss  # adding this as the gpu usage was increasing with time
-                # del preds
-
-            # if split in ['test']:
-            #     vis_logger.record_epoch(split, i, args.country, save=False,
-            #                             save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-            # else:
-            #     vis_logger.record_epoch(split, i, args.country)
-
-            # if split == 'val':
-            #     val_f1 = metrics.get_f1score(vis_logger.epoch_data['val_cm'], avg=True)
-            #     print("val at epoch=", i, val_f1)
-            #
-            #     if val_f1 > best_val_f1:
-            #         torch.save(model.state_dict(), os.path.join(args.save_dir, args.name + "_best"))
-            #         best_val_f1 = val_f1
-            #         print("best till now saved at epoch", i, args.name + "_best")
-            #
-            #         # """  # commenting the next lines to check now if it is working or not
-            #         if args.save_best:
-            #             # TODO: Ideally, this would save any batch except the last one so that the saved images
-            #             #  are not only the remainder from the last batch
-            #             vis_logger.record_batch(inputs, cloudmasks, targets.float(), preds, confidence,
-            #                                     NUM_CLASSES[args.country], split,
-            #                                     args.include_doy, args.use_s1, args.use_s2,
-            #                                     model_name, args.time_slice, save=True, var_length=args.var_length,
-            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-            #
-            #             vis_logger.record_epoch(split, i, args.country, save=True,
-            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-            #
-            #             vis_logger.record_epoch('train', i, args.country, save=True,
-            #                                     save_dir=os.path.join(args.save_dir, args.name + "_best_dir"))
-        print(f"[EPOCH {i:03d}] => F1: {sum(ep_f1)/len(ep_f1)},RMSE: {sum(ep_rmse)/len(ep_rmse)}, Acc: {sum(ep_acc)/len(ep_acc)}")
+            if split in ['test']:
+                print(f"[Test] RMSE: {rmse}")
+                # print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+            else:
+                if split == 'val':
+                    logger.log({
+                        f"Validation RMSE": rmse,
+                        f"Validation Loss": loss,
+                        "X-Axis": i,
+                    })
+                    print(f"[Validation] RMSE: {rmse}")
+                    # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                    if best_val_rmse > rmse:
+                        best_val_rmse = rmse
+                        torch.save(model.state_dict(),
+                                   f"../model_weights/crop_yield_best_val({sat_names}).pth.tar")
+                else:
+                    logger.log({
+                        f"Train RMSE": rmse,
+                        f"Train Loss": loss,
+                        "X-Axis": i
+                    })
+                    print(f"[Train] RMSE: {rmse}")
+                    # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None, dataset=None):
@@ -303,7 +269,7 @@ def main(args):
     # load in data generator
 
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images)
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, task="yield")
 
     dataloaders = dataset
 
@@ -334,9 +300,9 @@ def main(args):
     # evaluate model
 
     # save model
-    if args.model_name in DL_MODELS:
-        torch.save(model.state_dict(), os.path.join(args.save_dir, args.name))
-        print("MODEL SAVED")
+    # if args.model_name in DL_MODELS:
+    #     torch.save(model.state_dict(), os.path.join(args.save_dir, args.name))
+    #     print("MODEL SAVED")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ import datetime
 import pytz
 from PIL import Image
 from tqdm import tqdm
-from sklearn.metrics import f1_score, accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import f1_score, accuracy_score, precision_recall_fscore_support, mean_squared_error
 from sustainbench.common.utils import subsample_idxs
 from sustainbench.common.metrics.all_metrics import Accuracy
 from sustainbench.common.grouper import CombinatorialGrouper
@@ -262,27 +262,29 @@ class CauveryDataset(SustainBenchDataset):
         Returns x for a given idx.
         """
         if self.task == "yield":
-            return torch.Tensor([self.y_array[idx][-1].item()]).type(torch.LongTensor)
+            return torch.Tensor([self.y_array[idx][-1].item()])#.type(torch.LongTensor)
         sowing = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
         transplanting = self.y_array[idx][3].item() - 1
         harvesting = self.y_array[idx][4].item() - 1
         return torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)
 
     def metrics(self, y_true, y_pred):
-        y_pred = y_pred.argmax(axis=1)
-        # print("Shapes of y_true and y_pred respectively:", y_true.shape, y_pred.shape)
+        if self.task != "yield":
+            y_pred = y_pred.argmax(axis=1)
+            y_true = y_true.astype('int')
+            y_pred = y_pred.astype('int')
         y_true = y_true.flatten()
         y_pred = y_pred.flatten()
-        assert (y_true.shape == y_pred.shape)
-        y_true = y_true.astype('int')
-        y_pred = y_pred.astype('int')
         # print(y_true)
         # print(y_pred)
-        rmse = np.sqrt(np.mean((y_true-y_pred)**2))
+        assert (y_true.shape == y_pred.shape)
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        if self.task == "yield":
+            return None, rmse, None
         f1 = f1_score(y_true, y_pred, average='macro')
         acc = []
         for t, p in zip(y_true, y_pred):
-            if np.abs(t - p) <= 5:
+            if np.abs(t - p) <= 7:
                 acc.append(1)
             else:
                 acc.append(0)

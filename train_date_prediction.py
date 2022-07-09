@@ -122,7 +122,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
     best_val_rmse = 10000000
 
     for i in range(args.epochs if not args.eval_on_test else 1):
-        ep_f1, ep_rmse, ep_acc = [], [], []
+        ep_f1, ep_rmse, ep_acc, ep_loss = [], [], [], []
         print('Epoch: {}'.format(i))
 
         # vis_logger.reset_epoch_data()
@@ -135,7 +135,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
             # nclass = args.num_timesteps + 1
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
 
-            for inputs, targets in train_loader:
+            for inputs, targets in tqdm(train_loader):
                 # targets = F.one_hot(targets, num_classes=4)
                 # mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
                 #
@@ -165,9 +165,9 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                             temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
                     if args.use_planet:
                         if temp_inputs is None:
-                            temp_inputs = inputs['planet']
+                            temp_inputs = inputs['l8']
                         else:
-                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
+                            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
 
                     inputs = temp_inputs
                     # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
@@ -178,6 +178,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     preds = model(inputs)
                     # print(preds.shape, targets.shape)
                     loss = torch.sum(loss_fn(preds, targets))
+                    ep_loss.append(loss.item())
                     results, results_str = dataset.eval(preds.detach().cpu().numpy(), targets.detach().cpu().numpy())
                     f1, rmse, acc = results
                     ep_f1.append(f1)
@@ -209,9 +210,10 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
             accuracy = sum(ep_acc) / len(ep_acc)
             f1 = sum(ep_f1) / len(ep_f1)
             rmse = sum(ep_rmse) / len(ep_rmse)
+            loss = sum(ep_loss) / len(ep_loss)
 
             if split in ['test']:
-                print(f"[Test] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}")
+                print(f"[Test] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                 # print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
             else:
                 if split == 'val':
@@ -219,9 +221,10 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         f"Validation F1": f1,
                         f"Validation RMSE": rmse,
                         f"Validation Accuracy": accuracy,
+                        f"Validation Loss": loss,
                         "X-Axis": i,
                     })
-                    print(f"[Validation] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}")
+                    print(f"[Validation] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                     # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                     if best_val_f1 < f1:
                         best_val_f1 = f1
@@ -237,9 +240,10 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         f"Train F1": f1,
                         f"Train RMSE": rmse,
                         f"Train Accuracy": accuracy,
+                        f"Train Loss": loss,
                         "X-Axis": i
                     })
-                    print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}")
+                    print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                     # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
 
@@ -309,9 +313,9 @@ def main(args):
     # evaluate model
 
     # save model
-    if args.model_name in DL_MODELS:
-        torch.save(model.state_dict(), os.path.join(args.save_dir, args.name))
-        print("MODEL SAVED")
+    # if args.model_name in DL_MODELS:
+    #     torch.save(model.state_dict(), os.path.join(args.save_dir, args.name))
+    #     print("MODEL SAVED")
 
 
 if __name__ == "__main__":
