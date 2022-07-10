@@ -24,7 +24,7 @@ from torch import autograd
 import visualize
 
 from sustainbench import get_dataset
-from sustainbench.common.data_loaders import get_train_loader
+from sustainbench.common.data_loaders import get_train_loader, get_eval_loader
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 
