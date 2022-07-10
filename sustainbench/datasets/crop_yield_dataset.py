@@ -66,7 +66,7 @@ class CropYieldDataset(SustainBenchDataset):
         if split_scheme=='cauvery':
             self._data_dir = root_dir
         else:
-            self._data_dir = "/home/parichya/Documents/pycrop-yield-prediction/yield_data/crop_yield"
+            self._data_dir = "data"
             # self._data_dir = self.initialize_data_dir(root_dir, download) # TODO: uncomment
         
         self.root = Path(self._data_dir)
@@ -170,18 +170,23 @@ class CropYieldDataset(SustainBenchDataset):
             raise FileNotFoundError(f"Data directory for country {country} not found at {country_data_dir}")
 
         if self.split_scheme == 'cauvery':
-            data_file = os.path.join(country_data_dir, 'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
-            # data_file_2= os.path.join(country_data_dir,'yield_npz/S2_hist.npz')
+            data_file_l8 = os.path.join(country_data_dir, 'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
+            data_file_s1 = os.path.join(country_data_dir,'yield_npz/S1_hist.npz')
+            data_file_s2 = os.path.join(country_data_dir,'yield_npz/S2_hist.npz')
             # data2 = np.load(data_file_2)['data'].astype(float)
-            data = np.load(data_file)['data'].astype(float)
-            df=pd.read_csv(os.path.join(country_data_dir, 'cauvery_dataset.csv')).reset_index(drop=True)
+            data_l8 = np.load(data_file_l8)['data'].astype(float)
+            data_s1 = np.load(data_file_s1)['data'].astype(float)
+            data_s2 = np.load(data_file_s2)['data'].astype(float)
+            df = pd.read_csv(os.path.join(country_data_dir, 'cauvery_dataset.csv')).reset_index(drop=True)
             # print(df)
             idx_ = df.index[df['SPLIT_YIELD'] == fname].tolist()
             # print(idx_)
-            data=data[idx_]
-            # data2=data2[idx_]
+            data_l8 = data_l8[idx_]
+            data_s1 = data_s1[idx_]
+            data_s2 = data_s2[idx_]
             # labels_file = os.path.join()#path to csv)
-            # data=np.concatenate((data,data2), axis=-1)
+            # data = np.concatenate((data_l8, data_s1, data_s2), axis=-1)
+            data = data_s1
             # print(data.shape)
 
             labels = df['YIELD'].to_numpy()[idx_]
@@ -212,10 +217,11 @@ class CropYieldDataset(SustainBenchDataset):
         if self.split_scheme == 'cauvery':
             # satellite_bands_ps=[0,3,2,1]
             # img = img[:,:,satellite_bands_ps]
-            satellite_bands_l8=[3,4,1,2,5,6,7]
-            img = img[:,:,satellite_bands_l8]
+            # satellite_bands_l8=[3,4,1,2,5,6,7]
+            # img = img[:,:,satellite_bands_l8]
             # satellite_bands_S2=[2,6,0,1,8,9,3]
             # img = img[:,:,satellite_bands_S2]
+            return img
         else:
             modis_bands=[0,1,2,3,5,6,7] #training planet scope
             img = img[:,:,modis_bands]

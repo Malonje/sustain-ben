@@ -127,11 +127,16 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
         # vis_logger.reset_epoch_data()
 
-        for split in ['train', 'val'] if not args.eval_on_test else ['test']:
+        for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
             train_data = dataloaders.get_subset(split)
 
-            train_loader = get_train_loader('standard', train_data, args.batch_size)
-            model.train() if split == ['train'] else model.eval()
+            if split == 'train':
+                train_loader = get_train_loader('standard', train_data, args.batch_size)
+                model.train()
+            else:
+                train_loader = get_eval_loader('standard', train_data, args.batch_size)
+                model.eval()
+
             # nclass = args.num_timesteps + 1
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
 
@@ -226,13 +231,13 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     })
                     print(f"[Validation] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                     # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
-                    if best_val_f1 < f1:
+                    if best_val_f1 < f1 and not args.eval_on_test:
                         best_val_f1 = f1
                         torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_f1({sat_names}).pth.tar")
-                    if best_val_acc < accuracy:
+                    if best_val_acc < accuracy and not args.eval_on_test:
                         best_val_acc = accuracy
                         torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_acc({sat_names}).pth.tar")
-                    if best_val_rmse > rmse:
+                    if best_val_rmse > rmse and not args.eval_on_test:
                         best_val_rmse = rmse
                         torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_rmse({sat_names}).pth.tar")
                 else:

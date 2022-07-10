@@ -22,7 +22,7 @@ from torch import autograd
 import visualize
 
 from sustainbench import get_dataset
-from sustainbench.common.data_loaders import get_train_loader
+from sustainbench.common.data_loaders import get_train_loader, get_eval_loader
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 from sustainbench import logger
@@ -116,38 +116,30 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
 
-    # set up information lists for visdom
-    # vis_logger = visualize.VisdomLogger(args.env_name, model_name, args.country, splits)
     # loss_fn = nn.MSELoss(reduction="none")
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
-    best_val_f1 = 0
-
-    model = model.cuda()
-    best_val_rmse = 10000000
+    best_val_rmse = np.inf
 
     for i in range(args.epochs if not args.eval_on_test else 1):
-        ep_rmse = []
         print('Epoch: {}'.format(i))
 
-        running_train_scores = defaultdict(list)
-
-        # vis_logger.reset_epoch_data()
-
-        for split in ['train', 'val'] if not args.eval_on_test else ['test']:
+        for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
+            running_train_scores = defaultdict(list)
             train_data = dataloaders.get_subset(split)
 
-            train_loader = get_train_loader('standard', train_data, args.batch_size)
-            model.train() if split == ['train'] else model.eval()
+            if split == 'train':
+                train_loader = get_train_loader('standard', train_data, args.batch_size)
+                model.train()
+            else:
+                train_loader = get_eval_loader('standard', train_data, args.batch_size)
+                model.eval()
 
             for inputs, targets in tqdm(train_loader):
 
                 with torch.set_grad_enabled(True):
                     if not args.var_length:
-                        # inputs.to(args.device)
                         for a in inputs:
                             inputs[a] = inputs[a].to(args.device)
-
-                        # if hres_inputs is not None: hres_inputs.to(args.device)
                     else:
                         for sat in inputs:
                             if "length" not in sat:
@@ -168,22 +160,13 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                             temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
 
                     inputs = temp_inputs
-                    inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
+                    inputs = inputs.permute(0, 1, 4, 2, 3)
 
                     preds = model(inputs.float())
 
                     loss, running_train_scores = l1_l2_loss(
                         preds, targets, 1, running_train_scores
                     )
-                    # loss = torch.sum(loss_fn(preds, targets))
-                    # results, results_str = dataset.eval(preds.detach().cpu().numpy(), targets.detach().cpu().numpy())
-                    # f1, rmse, acc = results
-                    # ep_rmse.append(rmse)
-                    # if rmse < 0 or loss < 0:
-                    #     print(preds)
-                    #     print(targets)
-                    #     print(rmse, loss.item())
-                    #     exit()
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
@@ -202,15 +185,10 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         gradnorm = total_norm ** (1. / 2)
                         # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
 
-                        # vis_logger.update_progress('train', 'gradnorm', gradnorm)
-                        loss = loss.cpu()
-            # ep_rmse = running_train_scores["RMSE"]
-            # rmse = sum(ep_rmse) / len(ep_rmse)
             rmse = round(np.array(running_train_scores["RMSE"]).mean(), 5)
 
-            if split in ['test']:
+            if split == 'test':
                 print(f"[Test] RMSE: {rmse}")
-                # print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
             else:
                 if split == 'val':
                     logger.log({
@@ -219,8 +197,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         "X-Axis": i,
                     })
                     print(f"[Validation] RMSE: {rmse}")
-                    # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
-                    if best_val_rmse > rmse:
+                    if best_val_rmse > rmse and not args.eval_on_test:
                         best_val_rmse = rmse
                         torch.save(model.state_dict(),
                                    f"../model_weights/crop_yield_best_val({sat_names}).pth.tar")
@@ -231,7 +208,6 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         "X-Axis": i
                     })
                     print(f"[Train] RMSE: {rmse}")
-                    # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None, dataset=None):

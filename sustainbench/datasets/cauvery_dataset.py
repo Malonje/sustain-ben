@@ -269,18 +269,13 @@ class CauveryDataset(SustainBenchDataset):
         return torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)
 
     def metrics(self, y_true, y_pred):
-        if self.task != "yield":
-            y_pred = y_pred.argmax(axis=1)
-            y_true = y_true.astype('int')
-            y_pred = y_pred.astype('int')
+        y_pred = y_pred.argmax(axis=1)
+        y_true = y_true.astype('int')
+        y_pred = y_pred.astype('int')
         y_true = y_true.flatten()
         y_pred = y_pred.flatten()
-        # print(y_true)
-        # print(y_pred)
         assert (y_true.shape == y_pred.shape)
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-        if self.task == "yield":
-            return None, rmse, None
         f1 = f1_score(y_true, y_pred, average='macro')
         acc = []
         for t, p in zip(y_true, y_pred):

@@ -17,7 +17,7 @@ from sklearn.metrics import r2_score
 
 
 
-checkpoint_path='/home/parichya/Documents/predict_result/'
+checkpoint_path='../model_weights'
 
 run_name = logger.init(project='transfer_crop_yield', reinit=True)
 
@@ -41,16 +41,18 @@ run_name = logger.init(project='transfer_crop_yield', reinit=True)
 # )
 
 
-dataset = get_dataset(dataset='crop_yield',split_scheme="cauvery",root_dir='/home/parichya/Documents/')
+dataset = get_dataset(dataset='crop_yield',split_scheme="cauvery",root_dir='data')
 train_data = dataset.get_subset('train')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
 val_data   = dataset.get_subset('val')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
+test_data   = dataset.get_subset('test')#, transform=transforms.Compose([transforms.Lambda(preprocess_input)]), preprocess_fn=True)
 batch_size=32
 # Prepare the standard data loader
 train_loader = get_train_loader('standard', train_data, batch_size=batch_size)
-val_loader   = get_train_loader('standard', val_data, batch_size=batch_size)
+val_loader   = get_eval_loader('standard', val_data, batch_size=batch_size)
+test_loader   = get_eval_loader('standard', test_data, batch_size=batch_size)
 # dropout=0.5
 dropout=0.2
-savedir=Path("/home/parichya/Documents/sustainbench/results_prediction_transfer")
+savedir=Path("../")
 dense_features=None
 train_steps=25000
 batch_size=32
@@ -68,7 +70,7 @@ sigma_b=0.01
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model = convnet.ConvModel(
-    in_channels=10,
+    in_channels=3,
     dropout=dropout,
     dense_features=dense_features,
     savedir=savedir,
@@ -112,9 +114,9 @@ val_scores = defaultdict(list)
 step_number = 0
 min_loss = np.inf
 best_state = model.state_dict()
-model=model.float()
+model = model.float()
 
-prev_val_rmse=1000000
+prev_val_rmse=np.inf
 
 if patience is not None:
     epochs_without_improvement = 0
@@ -208,6 +210,7 @@ for epoch in range(num_epochs):
     print(train_output_strings)
     val_rmse=float(val_output_strings[3].split(':')[1])
     if prev_val_rmse > val_rmse:
+        print("Best val rmse:", val_rmse, np.array(running_val_scores["RMSE"]).mean())
         prev_val_rmse=val_rmse
         checkpoint = {
                                 'model_state_dict': model.state_dict(),
@@ -228,7 +231,7 @@ for epoch in range(num_epochs):
     })
 
 
-    epoch_val_loss = np.array(running_val_scores["loss"]).mean()
+    epoch_val_loss = np.array(running_val_scores["RMSE"]).mean()
 
     if epoch_val_loss < min_loss:
         best_state = model.state_dict()
@@ -244,6 +247,5 @@ for epoch in range(num_epochs):
         #     model.load_state_dict(best_state)
         #     print("Early stopping!")
         #     break
-print('VALIDATION RMSE :', prev_val_rmse)
-model.load_state_dict(best_state)
-# print( train_scores, val_scores)
+print('VALIDATION RMSE :', prev_val_rmse, min_loss)
+

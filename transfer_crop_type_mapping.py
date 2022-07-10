@@ -117,16 +117,21 @@ def train_dl_model(model, model_name, dataloaders, args):
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val = 0
 
-    for i in range(args.epochs if not args.eval_on_test else 1):
+    for i in range(args.epochs if not args.eval_on_test else 2):
         print('Epoch: {}'.format(i))
 
-        for split in ['train', 'val'] if not args.eval_on_test else ['test']:
+        for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
             correct_pixels = 0
             total_pixels = 0
             train_data = dataloaders.get_subset(split)
 
-            train_loader = get_train_loader('standard', train_data, args.batch_size)
-            model.train() if split == ['train'] else model.eval()
+            if split == 'train':
+                train_loader = get_train_loader('standard', train_data, args.batch_size)
+                model.train()
+            else:
+                train_loader = get_eval_loader('standard', train_data, args.batch_size)
+                model.eval()
+
             nclass = len(CM_LABELS[args.country]) + 1
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
             for inputs, targets in tqdm(train_loader):
@@ -197,7 +202,7 @@ def train_dl_model(model, model_name, dataloaders, args):
 
             accuracy = correct_pixels / total_pixels
 
-            if split in ['test']:
+            if split == 'test':
                 print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
             else:
                 if split == 'val':
@@ -206,7 +211,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                         "X-Axis": i,
                     })
                     print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
-                    if best_val < accuracy:
+                    if best_val < accuracy and not args.eval_on_test:
                         best_val = accuracy
                         torch.save(model.state_dict(), f"../model_weights/crop_type_best_val({sat_names}).pth.tar")
                 else:
