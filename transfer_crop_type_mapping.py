@@ -117,7 +117,7 @@ def train_dl_model(model, model_name, dataloaders, args):
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val = 0
 
-    for i in range(args.epochs if not args.eval_on_test else 2):
+    for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
 
         for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
