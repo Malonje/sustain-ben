@@ -136,7 +136,7 @@ def train_dl_model(model, model_name, dataloaders, args):
             # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
             for inputs, targets in tqdm(train_loader):
                 targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
-                mask = torch.arange(1, nclass)  # tensor([1, 2, 3, 4])
+                mask = torch.arange(1, 3)  # tensor([1, 2, 3, 4])
 
                 targets = torch.index_select(targets, 3, mask)
 
