@@ -70,7 +70,7 @@ sigma_b=0.01
 device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 model = convnet.ConvModel(
-    in_channels=3,
+    in_channels=13,
     dropout=dropout,
     dense_features=dense_features,
     savedir=savedir,

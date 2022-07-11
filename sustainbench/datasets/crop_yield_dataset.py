@@ -185,8 +185,8 @@ class CropYieldDataset(SustainBenchDataset):
             data_s1 = data_s1[idx_]
             data_s2 = data_s2[idx_]
             # labels_file = os.path.join()#path to csv)
-            # data = np.concatenate((data_l8, data_s1, data_s2), axis=-1)
-            data = data_s1
+            data = np.concatenate((data_s1, data_s2), axis=-1)
+            # data = data_s2
             # print(data.shape)
 
             labels = df['YIELD'].to_numpy()[idx_]

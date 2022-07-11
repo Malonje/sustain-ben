@@ -151,6 +151,14 @@ class CauveryDataset(SustainBenchDataset):
         x = self.get_input(idx)
         y = self.get_label(idx)
         metadata = None #self.get_metadata(idx)
+        transplanting = int(self.y_array[idx][3].item()) - 1 if self.y_array[idx][3].item() > 0 else 0
+        harvesting = int(self.y_array[idx][4].item()) - 1
+        x['s1'][:, :, :, :transplanting] = torch.zeros_like(x['s1'][:, :, :, :transplanting])
+        x['s2'][:, :, :, :transplanting] = torch.zeros_like(x['s2'][:, :, :, :transplanting])
+        x['l8'][:, :, :, :transplanting] = torch.zeros_like(x['l8'][:, :, :, :transplanting])
+        x['s1'][:, :, :, harvesting+1:] = torch.zeros_like(x['s1'][:, :, :, harvesting+1:])
+        x['s2'][:, :, :, harvesting+1:] = torch.zeros_like(x['s2'][:, :, :, harvesting+1:])
+        x['l8'][:, :, :, harvesting+1:] = torch.zeros_like(x['l8'][:, :, :, harvesting+1:])
         return x, y, metadata
 
     def get_input(self, idx):

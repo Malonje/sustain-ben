@@ -177,13 +177,13 @@ GRID_SIZE = {'cauvery': 32,
 #               'tanzania': 64,
 #               'germany': 48 }
 
-CM_LABELS = {'cauvery': [0, 1, 2],
+CM_LABELS = {'cauvery': [0, 1],
              'ghana': [0, 1, 2, 3],
              'southsudan': [0, 1, 2, 3],
              'tanzania': [0, 1, 2, 3, 4],
              'germany': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]}
 
-CROPS = {'cauvery': ['unknown', 'paddy', 'non-paddy'],
+CROPS = {'cauvery': ['paddy', 'non-paddy'],
          'ghana': ['groundnut', 'maize', 'rice', 'soya bean'],
          'southsudan': ['sorghum', 'maize', 'rice', 'groundnut'],
          'tanzania': ['maize', 'beans', 'sunflower', 'chickpeas', 'wheat'],
