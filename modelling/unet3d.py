@@ -65,6 +65,7 @@ class UNet3D(nn.Module):
         pool_4 = self.pool_4(en4)
         center_in = self.center_in(pool_4)
         center_out = self.center_out(center_in)
+        print(center_out.shape, en4.shape)
         concat4 = torch.cat([center_out, en4], dim=1)
         dc4 = self.dc4(concat4)
         trans3 = self.trans3(dc4)

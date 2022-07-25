@@ -14,7 +14,7 @@ from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS, MEANS, ST
 
 # BAND STATS
 
-IMG_DIM = (32, 32)
+IMG_DIM = (12, 12)
 
 PLANET_DIM = 212
 
@@ -285,7 +285,8 @@ class CropTypeMappingDataset(SustainBenchDataset):
             return label[32:64, 32:64]
         else:
             label = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))
-            label = torch.from_numpy(label['crop_type'])
+            label = torch.from_numpy(np.expand_dims(label['crop_type'], 0))
+            label = transforms.Resize(IMG_DIM)(label)[0]
         return label
 
     def get_dates(self, json_file):

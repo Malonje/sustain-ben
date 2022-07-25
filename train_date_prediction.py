@@ -122,12 +122,12 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
     best_val_rmse = 10000000
 
     for i in range(args.epochs if not args.eval_on_test else 1):
-        ep_f1, ep_rmse, ep_acc, ep_loss = [], [], [], []
         print('Epoch: {}'.format(i))
 
         # vis_logger.reset_epoch_data()
 
         for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
+            ep_f1, ep_rmse, ep_acc, ep_loss = [], [], [], []
             train_data = dataloaders.get_subset(split)
 
             if split == 'train':

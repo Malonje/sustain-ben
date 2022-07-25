@@ -274,7 +274,9 @@ class CauveryDataset(SustainBenchDataset):
         sowing = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
         transplanting = self.y_array[idx][3].item() - 1
         harvesting = self.y_array[idx][4].item() - 1
-        return torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)
+        # y = torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)
+        y = torch.Tensor([sowing]).type(torch.LongTensor)
+        return y
 
     def metrics(self, y_true, y_pred):
         y_pred = y_pred.argmax(axis=1)

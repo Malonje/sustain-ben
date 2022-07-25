@@ -121,7 +121,7 @@ def get_model(model_name, **kwargs):
             model.load_state_dict(state_dict)
     elif model_name == 'unet-fc':
         num_bands = get_num_bands(kwargs)['all']
-        model = make_UNetFC_model(n_class=3, n_channel=num_bands,
+        model = make_UNetFC_model(n_class=1, n_channel=num_bands,
                                       timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
     elif model_name == 'unet-fc-yield':
         num_bands = get_num_bands(kwargs)['all']
