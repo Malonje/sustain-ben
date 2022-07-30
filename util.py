@@ -315,13 +315,13 @@ def get_num_bands(kwargs):
     num_bands = {'l8': 0, 's1': 0, 's2': 0, 'planet': 0}
 
     if kwargs.get('use_l8'):
-        num_bands['l8'] = L8_NUM_BANDS
+        num_bands['l8'] = len(kwargs.get('l8_bands').split(",")) if kwargs.get('l8_bands') is not None else L8_NUM_BANDS + added_doy + added_indices
     if kwargs.get('use_s1'):
-        num_bands['s1'] = S1_NUM_BANDS + added_doy
+        num_bands['s1'] = len(kwargs.get('s1_bands').split(",")) if kwargs.get('s1_bands') is not None else S1_NUM_BANDS + added_doy
     if kwargs.get('use_s2'):
-        num_bands['s2'] = kwargs.get('s2_num_bands') + added_doy + added_clouds + added_indices
+        num_bands['s2'] = len(kwargs.get('s2_bands').split(",")) if kwargs.get('s2_bands') is not None else kwargs.get('s2_num_bands') + added_doy + added_clouds + added_indices
     if kwargs.get('use_planet'):
-        num_bands['planet'] = PLANET_NUM_BANDS + added_doy + added_indices
+        num_bands['planet'] = len(kwargs.get('ps_bands').split(",")) if kwargs.get('ps_bands') is not None else PLANET_NUM_BANDS + added_doy + added_indices
 
     num_bands['all'] = num_bands['l8'] + num_bands['s1'] + num_bands['s2'] + num_bands['planet']
     return num_bands
@@ -466,6 +466,14 @@ def get_train_parser():
     # Arguments for number of bands to use
     parser.add_argument('--s2_num_bands', type=int, default=10,
                         help="Number of bands to use from Sentinel-2")
+    parser.add_argument('--l8_bands', type=str, default=None,
+                        help="Number of bands to use from Landsat-8")
+    parser.add_argument('--s1_bands', type=str, default=None,
+                        help="Number of bands to use from Sentinel-1")
+    parser.add_argument('--s2_bands', type=str, default=None,
+                        help="Number of bands to use from Sentinel-2")
+    parser.add_argument('--ps_bands', type=str, default=None,
+                        help="Number of bands to use from PlanetScope")
     # Args for FCN CRNN model
     parser.add_argument('--early_feats', type=str2bool, default=False,
                         help="Use early features in the CLSTM from center after encoder")

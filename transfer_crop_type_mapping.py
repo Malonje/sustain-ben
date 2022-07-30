@@ -100,6 +100,7 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args):
+    run_name = logger.init(project='crop_type_mapping', reinit=True)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:
@@ -213,7 +214,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                     print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                     if best_val < accuracy and not args.eval_on_test:
                         best_val = accuracy
-                        torch.save(model.state_dict(), f"../model_weights/crop_type_best_val({sat_names}).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/{run_name}.pth.tar")
                 else:
                     logger.log({
                         f"Train Accuracy": accuracy,
@@ -253,11 +254,36 @@ def main(args):
         elif args.device == 'cpu':
             use_cuda = False
         util.random_seed(seed_value=args.seed, use_cuda=use_cuda)
+    l8_bands = [0,1,2,3,4,5,6,7]
+    s1_bands = [0,1,2]
+    s2_bands = [0,1,2,3,4,5,6,7,8,9]
+    ps_bands = [0,1,2,3]
+    if args.l8_bands is not None:
+        for k, v in args.l8_bands:
+            v = v.replace('[', '')
+            v = v.replace(']', '')
+            l8_bands = list(map(int, v.split(',')))
+    if args.s1_bands is not None:
+        for k, v in args.s1_bands:
+            v = v.replace('[', '')
+            v = v.replace(']', '')
+            s1_bands = list(map(int, v.split(',')))
+    if args.s2_bands is not None:
+        for k, v in args.s2_bands:
+            v = v.replace('[', '')
+            v = v.replace(']', '')
+            s2_bands = list(map(int, v.split(',')))
+    if args.ps_bands is not None:
+        for k, v in args.ps_bands:
+            v = v.replace('[', '')
+            v = v.replace(']', '')
+            ps_bands = list(map(int, v.split(',')))
 
     # load in data generator
 
     dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images)
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
+                          l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands)
 
     dataloaders = dataset
 
@@ -296,7 +322,6 @@ def main(args):
 if __name__ == "__main__":
     # parse args
     parser = util.get_train_parser()
-    run_name = logger.init(project='crop_type_mapping', reinit=True)
 
     main(parser.parse_args())
 

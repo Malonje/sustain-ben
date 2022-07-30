@@ -74,7 +74,8 @@ class CropTypeMappingDataset(SustainBenchDataset):
 
     def __init__(self, version=None, root_dir='data', download=False,
                  split_scheme='official',
-                 resize_planet=False, calculate_bands=True, normalize=True):
+                 resize_planet=False, calculate_bands=True, normalize=True,
+                 l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9], ps_bands=[0,1,2,3]):
         """
         Args:
             resize_planet: True if Planet imagery will be resized to 64x64
@@ -84,6 +85,17 @@ class CropTypeMappingDataset(SustainBenchDataset):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
+
+        if calculate_bands:
+            self.l8_bands = l8_bands.extend([-2, -1])
+            self.s1_bands = s1_bands
+            self.s2_bands = s2_bands.extend([-2, -1])
+            self.ps_bands = ps_bands.extend([-2, -1])
+        else:
+            self.l8_bands = l8_bands
+            self.s1_bands = s1_bands
+            self.s2_bands = s2_bands
+            self.ps_bands = ps_bands
 
         self._version = version
         if split_scheme == "cauvery":
@@ -264,7 +276,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             elif (grid_id == 2):
                 return {'s1': s1[:, 0:32, 32:64, :], 's2': s2[:, 0:32, 32:64, :], 'planet': planet[:, 0:32, 32:64, :]}
             return {'s1': s1[:, 32:64, 32:64, :], 's2': s2[:, 32:64, 32:64, :], 'planet': planet[:, 32:64, 32:64, :]}
-        return {'s1': s1, 's2': s2, 'planet': planet}
+        return {'s1': s1[self.s1_bands], 's2': s2[self.s2_bands], 'planet': planet[self.ps_bands]}
 
     def get_label(self, idx):
         """
