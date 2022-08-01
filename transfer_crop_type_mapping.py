@@ -107,8 +107,10 @@ def train_dl_model(model, model_name, dataloaders, args):
         sat_names += "S1"
     if args.use_s2:
         sat_names += "S2"
-    if args.use_planet:
+    if args.use_l8:
         sat_names += "L8"
+    if args.use_planet:
+        sat_names += "planet"
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -162,6 +164,11 @@ def train_dl_model(model, model_name, dataloaders, args):
                             temp_inputs = inputs['s2']
                         else:
                             temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+                    if args.use_l8:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['l8']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
                     if args.use_planet:
                         if temp_inputs is None:
                             temp_inputs = inputs['planet']
@@ -170,6 +177,7 @@ def train_dl_model(model, model_name, dataloaders, args):
 
                     inputs = temp_inputs
                     # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
+                    print(inputs.shape)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     inputs = inputs.cuda()
@@ -280,6 +288,7 @@ def main(args):
             ps_bands = list(map(int, v.split(',')))
 
     # load in data generator
+
 
     dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
