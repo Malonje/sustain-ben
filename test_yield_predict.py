@@ -85,7 +85,7 @@ if is_cuda:
     model = model.cuda()
 model=model.float()
 
-dataset = get_dataset(dataset='crop_yield',split_scheme="cauvery",root_dir='data')
+dataset = get_dataset(dataset='crop_yield', split_scheme="cauvery", root_dir='data')
 train_data = dataset.get_subset('train')
 val_data=dataset.get_subset('val')
 test_data=dataset.get_subset('test')

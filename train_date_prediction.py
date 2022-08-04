@@ -26,7 +26,7 @@ from sustainbench.common.data_loaders import get_train_loader, get_eval_loader
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 
-run_name = logger.init(project='date_prediction', reinit=True)
+
 checkpoint_path = 'model_weights/'
 
 def evaluate_split(model, model_name, split_loader, device, loss_weight, weight_scale, gamma, num_classes, country,
@@ -100,14 +100,17 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
+    run_name = logger.init(project='date_prediction', reinit=True)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"
     if args.use_s2:
         sat_names += "S2"
-    if args.use_planet:
+    if args.use_l8:
         sat_names += "L8"
+    if args.use_planet:
+        sat_names += "planet"
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -168,11 +171,16 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                             temp_inputs = inputs['s2']
                         else:
                             temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
-                    if args.use_planet:
+                    if args.use_l8:
                         if temp_inputs is None:
                             temp_inputs = inputs['l8']
                         else:
                             temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
+                    if args.use_planet:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['planet']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
 
                     inputs = temp_inputs
                     # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
@@ -233,13 +241,13 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                     if best_val_f1 < f1 and not args.eval_on_test:
                         best_val_f1 = f1
-                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_f1({sat_names}).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_f1({run_name}).pth.tar")
                     if best_val_acc < accuracy and not args.eval_on_test:
                         best_val_acc = accuracy
-                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_acc({sat_names}).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_acc({run_name}).pth.tar")
                     if best_val_rmse > rmse and not args.eval_on_test:
                         best_val_rmse = rmse
-                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_rmse({sat_names}).pth.tar")
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_rmse({run_name}).pth.tar")
                 else:
                     logger.log({
                         f"Train F1": f1,
@@ -285,9 +293,50 @@ def main(args):
         util.random_seed(seed_value=args.seed, use_cuda=use_cuda)
 
     # load in data generator
+    l8_bands = [0,1,2,3,4,5,6,7]
+    s1_bands = [0,1,2]
+    s2_bands = [0,1,2,3,4,5,6,7,8,9]
+    ps_bands = [0,1,2,3]
+    if args.l8_bands is not None:
+        l8_bands=args.l8_bands[1:-1]
+        l8_bands=l8_bands.split(',')
+        l8_bands=[int(x) for x in l8_bands]
+    if args.s1_bands is not None:
+        s1_bands=args.s1_bands[1:-1]
+        s1_bands=s1_bands.split(',')
+        s1_bands=[int(x) for x in s1_bands]
+    if args.s2_bands is not None:
+        s2_bands=args.s2_bands[1:-1]
+        s2_bands=s2_bands.split(',')
+        s2_bands=[int(x) for x in s2_bands]
+    if args.ps_bands is not None:
+        ps_bands=args.ps_bands[1:-1]
+        ps_bands=ps_bands.split(',')
+        ps_bands=[int(x) for x in ps_bands]
+
+    sat_names = ""
+    if args.use_s1:
+        sat_names += "S1"
+    if args.use_s2:
+        sat_names += "S2"
+    if args.use_l8:
+        sat_names += "L8"
+    if args.use_planet:
+        sat_names += "planet"
+
+    img_dimension = (32,32)
+    truth_mask = 10
+    if sat_names.contains('planet'):
+        truth_mask = 3
+        img_dimension = (108,108)
+    elif sat_names == 'L8':
+        truth_mask = 30
+        img_dimension = (12,12)
 
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images)
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
+                          l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands,
+                          truth_mask=truth_mask, img_dim=img_dimension)
 
     dataloaders = dataset
 

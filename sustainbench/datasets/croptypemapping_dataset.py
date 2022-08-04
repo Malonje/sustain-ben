@@ -14,7 +14,7 @@ from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS, MEANS, ST
 
 # BAND STATS
 
-IMG_DIM = (108, 108)
+
 
 PLANET_DIM = 212
 
@@ -75,7 +75,8 @@ class CropTypeMappingDataset(SustainBenchDataset):
     def __init__(self, version=None, root_dir='data', download=False,
                  split_scheme='official',
                  resize_planet=False, calculate_bands=True, normalize=True,
-                 l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9], ps_bands=[0,1,2,3]):
+                 l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9],
+                 ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32)):
         """
         Args:
             resize_planet: True if Planet imagery will be resized to 64x64
@@ -90,6 +91,10 @@ class CropTypeMappingDataset(SustainBenchDataset):
         self.s1_bands = s1_bands
         self.s2_bands = s2_bands
         self.ps_bands = ps_bands
+        self.truth_mask = truth_mask
+        self.img_dim = img_dim
+
+
         if calculate_bands:
             self.l8_bands.extend([-2, -1])
             self.s1_bands = s1_bands
@@ -144,7 +149,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         # y_array stores idx ids corresponding to location. Actual y labels are
         # tensors that are loaded separately.
         self._y_array = torch.from_numpy(split_df['id'].values)
-        self._y_size = (IMG_DIM, IMG_DIM)
+        self._y_size = (self.img_dim, self.img_dim)
 
         self._metadata_fields = ['y']
         self._metadata_array = torch.from_numpy(split_df['id'].values)
@@ -230,16 +235,16 @@ class CropTypeMappingDataset(SustainBenchDataset):
 
         if self.resize_planet:
             s1 = s1.permute(3, 0, 1, 2)
-            s1 = transforms.Resize(IMG_DIM)(s1)
+            s1 = transforms.Resize(self.img_dim)(s1)
             s1 = s1.permute(1, 2, 3, 0)
             s2 = s2.permute(3, 0, 1, 2)
-            s2 = transforms.Resize(IMG_DIM)(s2)
+            s2 = transforms.Resize(self.img_dim)(s2)
             s2 = s2.permute(1, 2, 3, 0)
             l8 = l8.permute(3, 0, 1, 2)
-            l8 = transforms.Resize(IMG_DIM)(l8)
+            l8 = transforms.Resize(self.img_dim)(l8)
             l8 = l8.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
-            planet = transforms.Resize(IMG_DIM)(planet)
+            planet = transforms.Resize(self.img_dim)(planet)
             planet = planet.permute(1, 2, 3, 0)
         else:
             s1 = s1.permute(3, 0, 1, 2)
@@ -323,9 +328,9 @@ class CropTypeMappingDataset(SustainBenchDataset):
                 return label[0:32, 32:64]
             return label[32:64, 32:64]
         else:
-            label = np.load(os.path.join(self.data_dir, self.country, 'truth@3m', f'{self.country}_{loc_id}.npz'))
+            label = np.load(os.path.join(self.data_dir, self.country, f'truth@{self.truth_mask}m', f'{self.country}_{loc_id}.npz'))
             label = torch.from_numpy(np.expand_dims(label['crop_type'], 0))
-            label = transforms.Resize(IMG_DIM)(label)[0]
+            label = transforms.Resize(self.img_dim)(label)[0]
         return label
 
     def get_dates(self, json_file):

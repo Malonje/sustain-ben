@@ -19,7 +19,8 @@ from sustainbench.datasets.sustainbench_dataset import SustainBenchDataset
 import os
 import torch.nn.functional as F
 
-IMG_DIM = (7, 7)
+# IMG_DIM = (7, 7)
+
 
 partition_to_idx = {
     "train": 0,
@@ -33,16 +34,18 @@ BANDS = {'l8': {'8': {'UBLUE': 0, 'BLUE': 1, 'GREEN': 2, 'RED': 3, 'NIR': 4, 'SW
          's2': {'10': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'RDED1': 3, 'RDED2': 4, 'RDED3': 5, 'NIR': 6, 'RDED4': 7,
                        'SWIR1': 8, 'SWIR2': 9},
                 '4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}},
-         'planet': {'4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}}}
+         'planet': {'4': {'BLUE':   0, 'GREEN': 1, 'RED': 2, 'NIR': 3}}}
 
-MEANS = {'l8': {'cauvery': np.array([9094.22952295, 9660.10121921, 11549.65248343, 11781.45798216,
-                                     17696.67523116, 14023.37411014, 12002.04631372, 25758.76033058])},
-         's1': {'cauvery': np.array([5.05328385e+04, 5.06283933e+04, 3.44156868e+01]),
+MEANS = {'l8': {'cauvery': np.array([12568.23693711, 12884.11980095, 13913.08572643, 13744.98251397,
+                                     19348.8538171,  14400.93252211, 12137.75946084, 32752.88348736]
+                                    )},
+         's1': {'cauvery': np.array([5.34968438e+04, 5.36555564e+04, 3.42925821e+01]),
                 'ghana': np.array([-10.50, -17.24, 1.17]),
                 'southsudan': np.array([-9.02, -15.26, 1.15]),
                 'tanzania': np.array([-9.80, -17.05, 1.30])},
-         's2': {'cauvery': np.array([3533.29838044, 3586.85039805, 3491.22664833, 3937.02731823, 4318.46637238,
-                                     4494.57259037, 4513.15719641, 4545.55351609, 2832.31792097, 2260.36166447]),
+         's2': {'cauvery': np.array([3077.80182893, 3084.27244785, 2944.2416295,  3356.42566003, 3884.70291555,
+                                     4146.09093281, 4089.9417718,  4226.28939138, 2381.03087606, 1744.84373434]
+                                    ),
                 'ghana': np.array(
              [2620.00, 2519.89, 2630.31, 2739.81, 3225.22, 3562.64, 3356.57, 3788.05, 2915.40, 2102.65]),
                 'southsudan': np.array(
@@ -62,14 +65,16 @@ MEANS = {'l8': {'cauvery': np.array([9094.22952295, 9660.10121921, 11549.6524834
                             [1148.76, 1138.87, 1341.54, 1517.01, 1937.15, 2191.31, 2148.05, 2434.61, 2774.64,
                              2072.09])}}
 
-STDS = {'l8': {'cauvery': np.array([4287.37102194, 4409.46500442, 4561.73164467, 4683.97323962,
-                                    5927.10408736, 4944.42758823, 4116.9320306, 14412.41851867])},
-        's1': {'cauvery': np.array([2.75263293e+04, 2.74576680e+04, 7.21510934e+00]),
+STDS = {'l8': {'cauvery': np.array([ 9811.34429255,  9679.50989908,  8985.48993455, 9001.85187442,
+                                      8666.72647788,  6477.19337138,  5428.2011345,  18263.04960189]
+                                    )},
+        's1': {'cauvery': np.array([2.53692211e+04, 2.52311387e+04, 7.32906139e+00]),
                'ghana': np.array([3.57, 4.86, 5.60]),
                'southsudan': np.array([4.49, 6.68, 21.75]),
                'tanzania': np.array([3.53, 4.78, 16.61])},
-        's2': {'cauvery': np.array([3324.92163253, 3117.99506711, 3031.43557525, 3065.36310218, 2681.5744481,
-                                    2531.16029773, 2642.18692608, 2427.90602159, 1270.25714356, 1136.60107948]),
+        's2': {'cauvery': np.array([3303.74822819, 3057.09074463, 2946.57655367, 2997.19526042, 2610.09702032,
+                                     2469.30697291, 2483.67488076, 2369.08866661, 1603.58160356, 1419.04843785]
+                                ),
                 'ghana': np.array(
             [2171.62, 2085.69, 2174.37, 2084.56, 2058.97, 2117.31, 1988.70, 2099.78, 1209.48, 918.19]),
                'southsudan': np.array(
@@ -117,13 +122,28 @@ class CauveryDataset(SustainBenchDataset):
     }
 
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='cauvery',
-                 resize_planet=False, calculate_bands=True, normalize=True, task="date_prediction"):
+                 resize_planet=False, calculate_bands=True, normalize=True, task="date_prediction",
+                 l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9],
+                 ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32)):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
         self.task = task
-
         self._version = version
+
+        self.l8_bands = l8_bands
+        self.s1_bands = s1_bands
+        self.s2_bands = s2_bands
+        self.ps_bands = ps_bands
+        self.truth_mask = truth_mask
+        self.img_dim = img_dim
+
+        if calculate_bands:
+            self.l8_bands.extend([-2, -1])
+            self.s1_bands = s1_bands
+            self.s2_bands.extend([-2, -1])
+            self.ps_bands.extend([-2, -1])
+
         if split_scheme == 'cauvery':
             self._data_dir = root_dir
         else:
@@ -156,9 +176,11 @@ class CauveryDataset(SustainBenchDataset):
         x['s1'][:, :, :, :transplanting] = torch.zeros_like(x['s1'][:, :, :, :transplanting])
         x['s2'][:, :, :, :transplanting] = torch.zeros_like(x['s2'][:, :, :, :transplanting])
         x['l8'][:, :, :, :transplanting] = torch.zeros_like(x['l8'][:, :, :, :transplanting])
+        x['planet'][:, :, :, :transplanting] = torch.zeros_like(x['planet'][:, :, :, :transplanting])
         x['s1'][:, :, :, harvesting+1:] = torch.zeros_like(x['s1'][:, :, :, harvesting+1:])
         x['s2'][:, :, :, harvesting+1:] = torch.zeros_like(x['s2'][:, :, :, harvesting+1:])
         x['l8'][:, :, :, harvesting+1:] = torch.zeros_like(x['l8'][:, :, :, harvesting+1:])
+        x['planet'][:, :, :, harvesting+1:] = torch.zeros_like(x['planet'][:, :, :, harvesting+1:])
         return x, y, metadata
 
     def get_input(self, idx):
@@ -172,11 +194,14 @@ class CauveryDataset(SustainBenchDataset):
 
         s1 = images['s1'].astype(np.int64)
         s2 = images['s2'].astype(np.int64)
-        planet = images['l8'].astype(np.int64)
+        planet = images['planet'].astype(np.int64)
+        l8 = images['l8'].astype(np.int64)
+
         # planet = images['planet'].astype(np.int64)
 
-        mask = np.load(os.path.join(self.data_dir, self.country, 'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
+        mask = np.load(os.path.join(self.data_dir, self.country, f'truth@10m', f'{self.country}_{loc_id}.npz'))['plot_id']
         mask_l8 = np.load(os.path.join(self.data_dir, self.country, 'truth@30m', f'{self.country}_{loc_id}.npz'))['plot_id']
+        mask_ps = np.load(os.path.join(self.data_dir, self.country, 'truth@3m', f'{self.country}_{loc_id}.npz'))['plot_id']
         plot_id = self._metadata_array[idx][1].item()
         # mask = np.where(mask == plot_id, 1, 0)
         # coord = np.argwhere(mask == 1)
@@ -190,17 +215,21 @@ class CauveryDataset(SustainBenchDataset):
         # print(s1.shape, s2.shape)
         s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        planet = (mask_l8 * planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        if planet.shape[2] == 0 or planet.shape[3] == 0:
-            # print(planet.shape)
-            planet = np.zeros((planet.shape[0], planet.shape[1], s2.shape[2], s2.shape[3]))
+        l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        planet = (mask_ps * planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
 
+
+        if l8.shape[2] == 0 or l8.shape[3] == 0:
+            # print(planet.shape)
+            l8 = np.zeros((l8.shape[0], l8.shape[1], s2.shape[2], s2.shape[3]))
+        # print(l8.shape)
         s1 = s1.transpose(1, 2, 3, 0)
         s2 = s2.transpose(1, 2, 3, 0)
         planet = planet.transpose(1, 2, 3, 0)
-
+        l8 = l8.transpose(1, 2, 3, 0)
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2)
+        l8 = torch.from_numpy(l8)
         planet = torch.from_numpy(planet)
 
         # print(l8.shape, s1.shape, s2.shape)
@@ -209,16 +238,17 @@ class CauveryDataset(SustainBenchDataset):
         if self.resize_planet:
             # print(s1.shape, s2.shape)
             s1 = s1.permute(3, 0, 1, 2)
-            s1 = transforms.Resize(IMG_DIM)(s1)
+            s1 = transforms.Resize(self.img_dim)(s1)
             s1 = s1.permute(1, 2, 3, 0)
             s2 = s2.permute(3, 0, 1, 2)
-            s2 = transforms.Resize(IMG_DIM)(s2)
+            s2 = transforms.Resize(self.img_dim)(s2)
             s2 = s2.permute(1, 2, 3, 0)
-            # l8 = l8.permute(3, 0, 1, 2)
-            # l8 = transforms.Resize(IMG_DIM)(l8)
-            # l8 = l8.permute(1, 2, 3, 0)
+            # print(self.img_dim)
+            l8 = l8.permute(3, 0, 1, 2)
+            l8 = transforms.Resize(self.img_dim)(l8)
+            l8 = l8.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
-            planet = transforms.Resize(IMG_DIM)(planet)
+            planet = transforms.Resize(self.img_dim)(planet)
             planet = planet.permute(1, 2, 3, 0)
         else:
             s1 = s1.permute(3, 0, 1, 2)
@@ -227,6 +257,9 @@ class CauveryDataset(SustainBenchDataset):
             s2 = s2.permute(3, 0, 1, 2)
             s2 = transforms.CenterCrop(PLANET_DIM)(s2)
             s2 = s2.permute(1, 2, 3, 0)
+            l8 = l8.permute(3, 0, 1, 2)
+            l8 = transforms.CenterCrop(PLANET_DIM)(l8)
+            l8 = l8.permute(1, 2, 3, 0)
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.CenterCrop(PLANET_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
@@ -236,34 +269,41 @@ class CauveryDataset(SustainBenchDataset):
         if self.calculate_bands:
             ndvi_s2 = (s2[BANDS['s2']['10']['NIR']] - s2[BANDS['s2']['10']['RED']]) / (
                     s2[BANDS['s2']['10']['NIR']] + s2[BANDS['s2']['10']['RED']])
-            ndvi_planet = (planet[BANDS['l8']['8']['NIR']] - planet[BANDS['l8']['8']['RED']]) / (
-                    planet[BANDS['l8']['8']['NIR']] + planet[BANDS['l8']['8']['RED']])
+            ndvi_l8 = (l8[BANDS['l8']['8']['NIR']] - l8[BANDS['l8']['8']['RED']]) / (
+                        l8[BANDS['l8']['8']['NIR']] + l8[BANDS['l8']['8']['RED']])
+            ndvi_planet = (planet[BANDS['planet']['4']['NIR']] - planet[BANDS['planet']['4']['RED']]) / (
+                        planet[BANDS['planet']['4']['NIR']] + planet[BANDS['planet']['4']['RED']])
 
             gcvi_s2 = (s2[BANDS['s2']['10']['NIR']] / s2[BANDS['s2']['10']['GREEN']]) - 1
-            gcvi_planet = (planet[BANDS['l8']['8']['NIR']] / planet[BANDS['l8']['8']['GREEN']]) - 1
+            gcvi_l8 = (l8[BANDS['l8']['8']['NIR']] / l8[BANDS['l8']['8']['GREEN']]) - 1
+            gcvi_planet = (planet[BANDS['planet']['4']['NIR']]/planet[BANDS['planet']['4']['GREEN']]) - 1
 
             ## added this to remove nans
             ndvi_s2[(s2[BANDS['s2']['10']['NIR'], :, :, :] + s2[BANDS['s2']['10']['RED'], :, :, :]) == 0] = 0
             gcvi_s2[s2[BANDS['s2']['10']['GREEN'], :, :, :] == 0] = 0
-            ndvi_planet[
-                (planet[BANDS['l8']['8']['NIR'], :, :, :] + planet[BANDS['l8']['8']['RED'], :, :, :]) == 0] = 0
-            gcvi_planet[planet[BANDS['l8']['8']['GREEN'], :, :, :] == 0] = 0
+            ndvi_l8[
+                (l8[BANDS['l8']['8']['NIR'], :, :, :] + l8[BANDS['l8']['8']['RED'], :, :, :]) == 0] = 0
+            gcvi_l8[l8[BANDS['l8']['8']['GREEN'], :, :, :] == 0] = 0
+            ndvi_planet[(planet[BANDS['planet']['4']['NIR'], :, :, :] + planet[BANDS['planet']['4']['RED'], :, :, :]) == 0] = 0
+            gcvi_planet[planet[BANDS['planet']['4']['GREEN'], :, :, :] == 0] = 0
 
         if self.normalize:
             s1 = self.normalization(s1, 's1')
             s2 = self.normalization(s2, 's2')
-            planet = self.normalization(planet, 'l8')
             # planet = self.normalization(planet, 'planet')
+            l8 = self.normalization(l8, 'l8')
 
         # Concatenate calculated bands
         if self.calculate_bands:
             s2 = torch.cat((s2, torch.unsqueeze(ndvi_s2, 0), torch.unsqueeze(gcvi_s2, 0)), 0)
             planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
+            l8 = torch.cat((l8, torch.unsqueeze(ndvi_l8, 0), torch.unsqueeze(gcvi_l8, 0)), 0)
 
         # s1 = self.pad(s1)
         # s2 = self.pad(s2)
         # planet = self.pad(planet)
-        return {'s1': s1, 's2': s2, 'l8': planet}
+        return {'s1': s1[self.s1_bands], 's2': s2[self.s2_bands], 'l8': l8[self.l8_bands], 'planet': planet[self.ps_bands]}
+        
 
     def get_label(self, idx):
         """
@@ -361,7 +401,7 @@ class CauveryDataset(SustainBenchDataset):
         stds = STDS[satellite][self.country]
         grid = (grid - means[:num_bands].reshape(num_bands, 1, 1, 1)) / stds[:num_bands].reshape(num_bands, 1, 1, 1)
 
-        if satellite not in ['s1', 's2', 'l8']:
+        if satellite not in ['s1', 's2', 'l8','planet']:
             raise ValueError("Incorrect normalization parameters")
         return grid
 

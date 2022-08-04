@@ -19,7 +19,7 @@ from sklearn.metrics import r2_score
 
 checkpoint_path='../model_weights'
 
-run_name = logger.init(project='transfer_crop_yield', reinit=True)
+
 
 # Get the training set
 # cleaned_data_path="data/img_output",
@@ -120,7 +120,7 @@ prev_val_rmse=np.inf
 
 if patience is not None:
     epochs_without_improvement = 0
-
+run_name = logger.init(project='transfer_crop_yield', reinit=True)
 for epoch in range(num_epochs):
     print(f"Epoch [{epoch + 1}/'{num_epochs}']" )
     model.train()
@@ -216,7 +216,8 @@ for epoch in range(num_epochs):
                                 'model_state_dict': model.state_dict(),
                                 'optimizer_state_dict': optimizer.state_dict(),
                 }
-        torch.save(checkpoint, os.path.join(checkpoint_path, f"BESTepochS2.checkpoint.pth.tar"))
+        torch.save(checkpoint, os.path.join(checkpoint_path, f"{run_name}.pth.tar"))
+        # torch.save(model.state_dict(), f"../model_weights/{run_name}.pth.tar")
 
     logger.log({
         f"Train RMSE": float(train_output_strings[3].split(':')[1]),

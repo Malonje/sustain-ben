@@ -11,6 +11,7 @@ import datetime
 import torch
 import metrics
 import util
+
 import numpy as np
 import pickle
 
@@ -29,7 +30,7 @@ from sustainbench import logger
 from collections import defaultdict
 from models.loss import l1_l2_loss
 
-run_name = logger.init(project='crop_yield', reinit=True)
+
 
 
 def evaluate_split(model, model_name, split_loader, device, loss_weight, weight_scale, gamma, num_classes, country,
@@ -104,13 +105,16 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
+    run_name = logger.init(project='crop_yield_v2', reinit=True)
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"
     if args.use_s2:
         sat_names += "S2"
-    if args.use_planet:
+    if args.use_l8:
         sat_names += "L8"
+    if args.use_planet:
+        sat_names += "planet"
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -153,15 +157,20 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                             temp_inputs = inputs['s2']
                         else:
                             temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
-                    if args.use_planet:
+                    if args.use_l8:
                         if temp_inputs is None:
                             temp_inputs = inputs['l8']
                         else:
                             temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
+                    if args.use_planet:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['planet']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
 
                     inputs = temp_inputs
                     inputs = inputs.permute(0, 1, 4, 2, 3)
-
+                    print(inputs.shape)
                     preds = model(inputs.float())
 
                     loss, running_train_scores = l1_l2_loss(
@@ -200,7 +209,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     if best_val_rmse > rmse and not args.eval_on_test:
                         best_val_rmse = rmse
                         torch.save(model.state_dict(),
-                                   f"../model_weights/crop_yield_best_val({sat_names}).pth.tar")
+                                   f"../model_weights/crop_yield_best_val({run_name}).pth.tar")
                 else:
                     logger.log({
                         f"Train RMSE": rmse,
@@ -208,6 +217,80 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         "X-Axis": i
                     })
                     print(f"[Train] RMSE: {rmse}")
+
+    if args.use_testing:
+        # if args.model_path is not None:
+        # model.load_state_dict(torch.load(args.model_path))
+        model.load_state_dict(torch.load(f"../model_weights/crop_yield_best_val({run_name}).pth.tar"))
+
+        for split in  ['val', 'test']:
+            running_train_scores = defaultdict(list)
+            train_data = dataloaders.get_subset(split)
+
+
+            train_loader = get_eval_loader('standard', train_data, args.batch_size)
+            model.eval()
+
+            for inputs, targets in tqdm(train_loader):
+
+                with torch.set_grad_enabled(True):
+                    if not args.var_length:
+                        for a in inputs:
+                            inputs[a] = inputs[a].to(args.device)
+                    else:
+                        for sat in inputs:
+                            if "length" not in sat:
+                                inputs[sat] = inputs[sat].to(args.device)
+                    targets = targets.to(args.device)
+                    temp_inputs = None
+                    if args.use_s1:
+                        temp_inputs = inputs['s1']
+                    if args.use_s2:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['s2']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+                    if args.use_l8:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['l8']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
+                    if args.use_planet:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['planet']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
+
+                    inputs = temp_inputs
+                    inputs = inputs.permute(0, 1, 4, 2, 3)
+                    print(inputs.shape)
+                    preds = model(inputs.float())
+
+                    loss, running_train_scores = l1_l2_loss(
+                        preds, targets, 1, running_train_scores
+                    )
+
+            rmse = round(np.array(running_train_scores["RMSE"]).mean(), 5)
+
+            if split == 'test':
+                print(f"[Test] RMSE: {rmse}")
+                logger.log({
+                        f"Test RMSE": rmse
+
+                    })
+            else:
+                if split == 'val':
+                    logger.log({
+                        f"Best Validation RMSE": rmse,
+                        f"Best Validation Loss": loss,
+                        "X-Axis": i,
+                    })
+                    print(f"[Best Validation] RMSE: {rmse}")
+                    if best_val_rmse > rmse and not args.eval_on_test:
+                        best_val_rmse = rmse
+                        torch.save(model.state_dict(),
+                                   f"../model_weights/crop_yield_best_val({run_name}).pth.tar")
+
 
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None, dataset=None):
@@ -243,14 +326,55 @@ def main(args):
         util.random_seed(seed_value=args.seed, use_cuda=use_cuda)
 
     # load in data generator
+    l8_bands = [0,1,2,3,4,5,6,7]
+    s1_bands = [0,1,2]
+    s2_bands = [0,1,2,3,4,5,6,7,8,9]
+    ps_bands = [0,1,2,3]
+    if args.l8_bands is not None:
+        l8_bands=args.l8_bands[1:-1]
+        l8_bands=l8_bands.split(',')
+        l8_bands=[int(x) for x in l8_bands]
+    if args.s1_bands is not None:
+        s1_bands=args.s1_bands[1:-1]
+        s1_bands=s1_bands.split(',')
+        s1_bands=[int(x) for x in s1_bands]
+    if args.s2_bands is not None:
+        s2_bands=args.s2_bands[1:-1]
+        s2_bands=s2_bands.split(',')
+        s2_bands=[int(x) for x in s2_bands]
+    if args.ps_bands is not None:
+        ps_bands=args.ps_bands[1:-1]
+        ps_bands=ps_bands.split(',')
+        ps_bands=[int(x) for x in ps_bands]
+
+    sat_names = ""
+    if args.use_s1:
+        sat_names += "S1"
+    if args.use_s2:
+        sat_names += "S2"
+    if args.use_l8:
+        sat_names += "L8"
+    if args.use_planet:
+        sat_names += "planet"
+
+    img_dimension = (7,7)
+    truth_mask = 10
+    if 'planet' in sat_names:
+        truth_mask = 3
+        img_dimension = (19,19)
+    elif sat_names == 'L8':
+        truth_mask = 30
+        img_dimension = (3,3)
 
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, task="yield")
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, task="yield",
+                          l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands,
+                          truth_mask=truth_mask, img_dim=img_dimension)
 
     dataloaders = dataset
 
     # load in model
-    model = croptype_models.get_model(**vars(args))
+    model = croptype_models.get_model( input_shape=img_dimension, **vars(args))
     if args.model_name in DL_MODELS:
         print('Total trainable model parameters: {}'.format(
             sum(p.numel() for p in model.parameters() if p.requires_grad)))
@@ -271,6 +395,10 @@ def main(args):
     print("Starting to train")
     # train model
     train(model, args.model_name, args, dataloaders=dataloaders, dataset=dataset)
+
+
+
+
     # print("\n\nargs.save_dir= ",args.save_dir)
     # print(args.name)
     # evaluate model

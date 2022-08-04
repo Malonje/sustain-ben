@@ -79,7 +79,7 @@ def make_UNet3D_model_pretrained(n_class, n_channel, timesteps, dropout):
     return model
 
 
-def make_UNetFC_model(n_class, n_channel, timesteps, dropout):
+def make_UNetFC_model(n_class, n_channel, timesteps, dropout, input_s):
     """ Defined a 3d U-Net model
     Args:
       n_class - (int) number of classes to predict
@@ -88,11 +88,11 @@ def make_UNetFC_model(n_class, n_channel, timesteps, dropout):
     Returns:
       returns the model!
     """
-    model = DateExtractor(n_channel, n_class, timesteps, dropout)
+    model = DateExtractor(n_channel, n_class, timesteps, dropout, input_s)
     model = model.cuda()
     return model
 
-def get_model(model_name, **kwargs):
+def get_model(model_name, input_shape,**kwargs ):
     """ Get appropriate model based on model_name and input arguments
     Args: 
       model_name - (str) which model to use 
@@ -122,10 +122,10 @@ def get_model(model_name, **kwargs):
     elif model_name == 'unet-fc':
         num_bands = get_num_bands(kwargs)['all']
         model = make_UNetFC_model(n_class=1, n_channel=num_bands,
-                                      timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
+                                      timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'), input_s=input_shape[0])
     elif model_name == 'unet-fc-yield':
         num_bands = get_num_bands(kwargs)['all']
-        model = YieldEstimation(num_bands, 1, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
+        model = YieldEstimation(num_bands, 1, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'), input_s=input_shape[0])
         model = model.cuda()
 
     else:
@@ -136,14 +136,14 @@ def get_model(model_name, **kwargs):
 
 
 class DateExtractor(nn.Module):
-    def __init__(self, in_channel, n_classes, timesteps, dropout):
+    def __init__(self, in_channel, n_classes, timesteps, dropout, input_s):
         super(DateExtractor, self).__init__()
 
         feats = 16
         self.en3 = conv_block(in_channel, feats*4, feats*4)
         self.en4 = conv_block(feats*4, feats*8, feats*8)
         self.center_in = center_in(feats*8, feats*16)
-        self.features = nn.Linear(feats*16*7*7, feats*16)
+        self.features = nn.Linear(feats*16*input_s*input_s, feats*16)
         self.date_predictions = nn.Linear(feats*16, n_classes)
 
         self.logsoftmax = nn.LogSoftmax(dim=1)
@@ -176,14 +176,14 @@ class DateExtractor(nn.Module):
 
 
 class YieldEstimation(nn.Module):
-    def __init__(self, in_channel, n_classes, timesteps, dropout):
+    def __init__(self,  in_channel, n_classes, timesteps, dropout, input_s):
         super(YieldEstimation, self).__init__()
 
         feats = 16
         self.en3 = conv_block(in_channel, feats*4, feats*4)
         self.en4 = conv_block(feats*4, feats*8, feats*8)
         self.center_in = center_in(feats*8, feats*16)
-        self.features = nn.Linear(feats*16*7*7*timesteps, n_classes)
+        self.features = nn.Linear(feats*16*input_s*input_s*timesteps, n_classes)
         # self.crop_yield = nn.Linear(feats*16*timesteps, n_classes)
 
         self.dropout = nn.Dropout(p=dropout, inplace=True)

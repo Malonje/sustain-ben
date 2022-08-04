@@ -309,21 +309,22 @@ def get_num_bands(kwargs):
         added_doy = 1
     if kwargs.get('include_clouds') and kwargs.get('use_s2'):
         added_clouds = 1
-    if kwargs.get('include_indices') and (kwargs.get('use_s2') or kwargs.get('use_planet')):
+    if kwargs.get('include_indices') and (kwargs.get('use_s2') or kwargs.get('use_l8') or kwargs.get('use_planet')):
         added_indices = 2
 
     num_bands = {'l8': 0, 's1': 0, 's2': 0, 'planet': 0}
 
     if kwargs.get('use_l8'):
-        num_bands['l8'] = len(kwargs.get('l8_bands').split(",")) if kwargs.get('l8_bands') is not None else L8_NUM_BANDS + added_doy + added_indices
+        num_bands['l8'] = (len(kwargs.get('l8_bands').split(",")) + added_doy + added_indices) if kwargs.get('l8_bands') is not None else L8_NUM_BANDS + added_doy + added_indices
     if kwargs.get('use_s1'):
-        num_bands['s1'] = len(kwargs.get('s1_bands').split(",")) if kwargs.get('s1_bands') is not None else S1_NUM_BANDS + added_doy
+        num_bands['s1'] = (len(kwargs.get('s1_bands').split(",")) + added_doy + added_indices) if kwargs.get('s1_bands') is not None else S1_NUM_BANDS + added_doy
     if kwargs.get('use_s2'):
-        num_bands['s2'] = len(kwargs.get('s2_bands').split(",")) if kwargs.get('s2_bands') is not None else kwargs.get('s2_num_bands') + added_doy + added_clouds + added_indices
+        num_bands['s2'] = (len(kwargs.get('s2_bands').split(",")) + added_doy + added_indices) if kwargs.get('s2_bands') is not None else kwargs.get('s2_num_bands') + added_doy + added_clouds + added_indices
     if kwargs.get('use_planet'):
-        num_bands['planet'] = len(kwargs.get('ps_bands').split(",")) if kwargs.get('ps_bands') is not None else PLANET_NUM_BANDS + added_doy + added_indices
+        num_bands['planet'] = (len(kwargs.get('ps_bands').split(",")) + added_doy + added_indices) if kwargs.get('ps_bands') is not None else PLANET_NUM_BANDS + added_doy + added_indices
 
     num_bands['all'] = num_bands['l8'] + num_bands['s1'] + num_bands['s2'] + num_bands['planet']
+    # print(num_bands)
     return num_bands
 
 
@@ -358,6 +359,9 @@ def get_train_parser():
     parser.add_argument('--shuffle', type=str2bool,
                         help="shuffle dataset between epochs?",
                         default=True)
+    parser.add_argument('--use_testing', type=str2bool,
+                        help="shuffle dataset between epochs?",
+                        default=False)
     parser.add_argument('--use_l8', type=str2bool,
                         help="use l8 data?",
                         default=False)

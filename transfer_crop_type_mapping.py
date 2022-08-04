@@ -112,6 +112,10 @@ def train_dl_model(model, model_name, dataloaders, args):
     if args.use_planet:
         sat_names += "planet"
 
+
+
+
+
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
@@ -267,32 +271,45 @@ def main(args):
     s2_bands = [0,1,2,3,4,5,6,7,8,9]
     ps_bands = [0,1,2,3]
     if args.l8_bands is not None:
-        for k, v in args.l8_bands:
-            v = v.replace('[', '')
-            v = v.replace(']', '')
-            l8_bands = list(map(int, v.split(',')))
+        l8_bands=args.l8_bands[1:-1]
+        l8_bands=l8_bands.split(',')
+        l8_bands=[int(x) for x in l8_bands]
     if args.s1_bands is not None:
-        for k, v in args.s1_bands:
-            v = v.replace('[', '')
-            v = v.replace(']', '')
-            s1_bands = list(map(int, v.split(',')))
+        s1_bands=args.s1_bands[1:-1]
+        s1_bands=s1_bands.split(',')
+        s1_bands=[int(x) for x in s1_bands]
     if args.s2_bands is not None:
-        for k, v in args.s2_bands:
-            v = v.replace('[', '')
-            v = v.replace(']', '')
-            s2_bands = list(map(int, v.split(',')))
+        s2_bands=args.s2_bands[1:-1]
+        s2_bands=s2_bands.split(',')
+        s2_bands=[int(x) for x in s2_bands]
     if args.ps_bands is not None:
-        for k, v in args.ps_bands:
-            v = v.replace('[', '')
-            v = v.replace(']', '')
-            ps_bands = list(map(int, v.split(',')))
+        ps_bands=args.ps_bands[1:-1]
+        ps_bands=ps_bands.split(',')
+        ps_bands=[int(x) for x in ps_bands]
 
     # load in data generator
 
+    sat_names = ""
+    if args.use_s1:
+        sat_names += "S1"
+    if args.use_s2:
+        sat_names += "S2"
+    if args.use_l8:
+        sat_names += "L8"
+    if args.use_planet:
+        sat_names += "planet"
 
+    img_dimension = (32,32)
+    truth_mask = 10
+    if 'planet' in sat_names:
+        truth_mask = 3
+        img_dimension = (108,108)
+    elif sat_names == 'L8':
+        truth_mask = 30
+        img_dimension = (12,12)
     dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
-                          l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands)
+                          l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands, truth_mask=truth_mask, img_dim=img_dimension)
 
     dataloaders = dataset
 

@@ -173,17 +173,24 @@ class CropYieldDataset(SustainBenchDataset):
             data_file_l8 = os.path.join(country_data_dir, 'yield_npz/L8_hist.npz')  #, f'{fname}_hists.npz')
             data_file_s1 = os.path.join(country_data_dir,'yield_npz/S1_hist.npz')
             data_file_s2 = os.path.join(country_data_dir,'yield_npz/S2_hist.npz')
+            # data_file_ps = os.path.join(country_data_dir,'yield_npz/PS_hist.npz')
+
             # data2 = np.load(data_file_2)['data'].astype(float)
             data_l8 = np.load(data_file_l8)['data'].astype(float)
             data_s1 = np.load(data_file_s1)['data'].astype(float)
             data_s2 = np.load(data_file_s2)['data'].astype(float)
+            # data_ps = np.load(data_file_ps)['data'].astype(float)
+
             df = pd.read_csv(os.path.join(country_data_dir, 'cauvery_dataset.csv')).reset_index(drop=True)
             # print(df)
             idx_ = df.index[df['SPLIT_YIELD'] == fname].tolist()
             # print(idx_)
+
             data_l8 = data_l8[idx_]
             data_s1 = data_s1[idx_]
             data_s2 = data_s2[idx_]
+            # data_ps = data_ps[idx_]
+
             # labels_file = os.path.join()#path to csv)
             data = np.concatenate((data_s1, data_s2), axis=-1)
             # data = data_s2
