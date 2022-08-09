@@ -11,7 +11,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 from sklearn import preprocessing, svm
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import SGDRegressor
 import tarfile
 import datetime
 from torch.utils.data import DataLoader
@@ -159,13 +159,17 @@ class IndicesDataset():
 
 
 
-# train_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
-#                                split='train', satellite='s2', for_indice='gcvi')
+train_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
+                               split='train', satellite='s2', for_indice='gcvi')
+test_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
+                               split='test', satellite='s2', for_indice='gcvi')
 
 train_len = 1919
+test_len = 500
 # val_len =
 # test_len =
-# train_loader = DataLoader(train_dataset, batch_size=train_len,shuffle=True, num_workers=0)
+train_loader = DataLoader(train_dataset, batch_size=train_len,shuffle=True, num_workers=0)
+test_loader  = DataLoader(test_dataset, batch_size=test_len,shuffle=True, num_workers=0)
 # for X,Y in tqdm(train_loader):
 #     X= X.numpy()
 #     Y=Y.numpy()
@@ -177,18 +181,21 @@ Y=np.load('/home/parichya/Documents/Y.npy')
 
 
 
-# X=np.nan_to_num(X)
-# # print(X)
-# # print(X[1])
-# # print(Y.shape)
-# X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.25)
-# print(2)
-# regr = LinearRegression()
+X=np.nan_to_num(X)
+# print(X)
+# print(X[1])
+# print(Y.shape)
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.25)
+print(X_train.shape)
+regr = SDGRegressor()
 # print(1)
-# regr.fit(X_train, y_train)
+regr.fit(X_train, y_train)
 # print(3)
-# print(regr.score(X_test, y_test))
-
+true=np.asarray(y_test).flatten()
+pred = np.asarray(reg).flatten()
+rmse = np.sqrt(np.mean((true - pred) ** 2))
+print(regr.score(X_test, y_test))
+#
 
 
 inputDim = 184       # takes variable 'x'

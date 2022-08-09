@@ -170,7 +170,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
                     inputs = temp_inputs
                     inputs = inputs.permute(0, 1, 4, 2, 3)
-                    print(inputs.shape)
+                    # print(inputs.shape)
                     preds = model(inputs.float())
 
                     loss, running_train_scores = l1_l2_loss(

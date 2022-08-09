@@ -324,19 +324,19 @@ def main(args):
     if args.use_planet:
         sat_names += "planet"
 
-    img_dimension = (32,32)
+    img_dimension = (7,7)
     truth_mask = 10
-    if sat_names.contains('planet'):
+    if 'planet' in sat_names:
         truth_mask = 3
-        img_dimension = (108,108)
+        img_dimension = (19,19)
     elif sat_names == 'L8':
         truth_mask = 30
-        img_dimension = (12,12)
+        img_dimension = (3,3)
 
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
                           l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands,
-                          truth_mask=truth_mask, img_dim=img_dimension)
+                          truth_mask=truth_mask, img_dim=img_dimension, date_pred_for=args.date_pred_for)
 
     dataloaders = dataset
 
