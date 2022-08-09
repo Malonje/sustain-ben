@@ -235,7 +235,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                     print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
     if args.use_testing:
-        model.load_state_dict(torch.load(f"../model_weights/crop_yield_best_val({run_name}).pth.tar"))
+        model.load_state_dict(torch.load(f"../model_weights/{run_name}.pth.tar"))
         for split in  ['val', 'test']:
                 correct_pixels = 0
                 total_pixels = 0

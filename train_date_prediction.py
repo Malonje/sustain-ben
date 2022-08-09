@@ -258,6 +258,137 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     })
                     print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                     # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+    if args.use_testing:
+        model.load_state_dict(torch.load(f"../model_weights/date_prediction_best_val_rmse({run_name}).pth.tar"))
+        for split in ['val', 'test']:
+            ep_f1, ep_rmse, ep_acc, ep_loss = [], [], [], []
+            train_data = dataloaders.get_subset(split)
+
+            if split == 'train':
+                train_loader = get_train_loader('standard', train_data, args.batch_size)
+                model.train()
+            else:
+                train_loader = get_eval_loader('standard', train_data, args.batch_size)
+                model.eval()
+
+            # nclass = args.num_timesteps + 1
+            # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
+
+            for inputs, targets in tqdm(train_loader):
+                # targets = F.one_hot(targets, num_classes=4)
+                # mask = torch.arange(1, 5)  # tensor([1, 2, 3, 4])
+                #
+                # targets = torch.index_select(targets, 3, mask)
+
+                # targets = targets.permute(0, 3, 1, 2)
+                # cloudmasks = None
+
+                with torch.set_grad_enabled(True):
+                    if not args.var_length:
+                        for a in inputs:
+                            inputs[a] = inputs[a].to(args.device)
+                    else:
+                        for sat in inputs:
+                            if "length" not in sat:
+                                inputs[sat] = inputs[sat].to(args.device)
+
+                    targets = targets.to(args.device)
+
+                    temp_inputs = None
+                    if args.use_s1:
+                        temp_inputs = inputs['s1']
+                    if args.use_s2:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['s2']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+                    if args.use_l8:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['l8']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
+                    if args.use_planet:
+                        if temp_inputs is None:
+                            temp_inputs = inputs['planet']
+                        else:
+                            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
+
+                    inputs = temp_inputs
+                    # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
+                    inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
+                    inputs = inputs.float()
+                    # inputs = inputs.cuda()
+
+                    preds = model(inputs)
+                    # print(preds.shape, targets.shape)
+                    loss = torch.sum(loss_fn(preds, targets))
+                    ep_loss.append(loss.item())
+                    results, results_str = dataset.eval(preds.detach().cpu().numpy(), targets.detach().cpu().numpy())
+                    f1, rmse, acc = results
+                    ep_f1.append(f1)
+                    ep_rmse.append(rmse)
+                    ep_acc.append(acc)
+
+                    if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
+                        # If there are valid pixels, update weights
+                        optimizer.zero_grad()
+                        # with autograd.detect_anomaly():
+                        loss.backward()
+                        if args.clip_val:
+                            # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+                            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
+                        optimizer.step()
+                        total_norm = 0
+                        for p in model.parameters():
+                            if p.grad is not None:
+                                param_norm = p.grad.data.norm(2)
+                                total_norm += param_norm.item() ** 2
+                        gradnorm = total_norm ** (1. / 2)
+                        # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
+
+                        # vis_logger.update_progress('train', 'gradnorm', gradnorm)
+                        loss = loss.cpu()
+                        # with torch.no_grad():
+                        #     vis_logger.update_progress('train', 'gradnorm', gradnorm)
+
+            accuracy = sum(ep_acc) / len(ep_acc)
+            f1 = sum(ep_f1) / len(ep_f1)
+            rmse = sum(ep_rmse) / len(ep_rmse)
+            loss = sum(ep_loss) / len(ep_loss)
+
+            if split in ['test']:
+                print(f"[Test] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
+                # print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+            else:
+                if split == 'val':
+                    logger.log({
+                        f"Validation F1": f1,
+                        f"Validation RMSE": rmse,
+                        f"Validation Accuracy": accuracy,
+                        f"Validation Loss": loss,
+                        "X-Axis": i,
+                    })
+                    print(f"[Validation] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
+                    # print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                    if best_val_f1 < f1 and not args.eval_on_test:
+                        best_val_f1 = f1
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_f1({run_name}).pth.tar")
+                    if best_val_acc < accuracy and not args.eval_on_test:
+                        best_val_acc = accuracy
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_acc({run_name}).pth.tar")
+                    if best_val_rmse > rmse and not args.eval_on_test:
+                        best_val_rmse = rmse
+                        torch.save(model.state_dict(), f"../model_weights/date_prediction_best_val_rmse({run_name}).pth.tar")
+                else:
+                    logger.log({
+                        f"Train F1": f1,
+                        f"Train RMSE": rmse,
+                        f"Train Accuracy": accuracy,
+                        f"Train Loss": loss,
+                        "X-Axis": i
+                    })
+                    print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
+                    # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None, dataset=None):
