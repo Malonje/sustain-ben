@@ -11,7 +11,7 @@ Changes to allow this are still in progess
 """
 
 
-import torch 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
@@ -29,7 +29,7 @@ import numpy as np
 
 def make_UNet3D_model(n_class, n_channel, timesteps, dropout):
     """ Defined a 3d U-Net model
-    Args: 
+    Args:
       n_class - (int) number of classes to predict
       n_channels - (int) number of input channgels
 
@@ -94,11 +94,11 @@ def make_UNetFC_model(n_class, n_channel, timesteps, dropout, input_s):
 
 def get_model(model_name, input_shape=(7,7  ),**kwargs ):
     """ Get appropriate model based on model_name and input arguments
-    Args: 
-      model_name - (str) which model to use 
+    Args:
+      model_name - (str) which model to use
       kwargs - input arguments corresponding to the model name
 
-    Returns: 
+    Returns:
       returns the model!
     """
 
@@ -129,8 +129,8 @@ def get_model(model_name, input_shape=(7,7  ),**kwargs ):
         model = model.cuda()
 
     else:
-        raise ValueError(f"Model {model_name} unsupported, check `model_name` arg") 
-        
+        raise ValueError(f"Model {model_name} unsupported, check `model_name` arg")
+
 
     return model
 
@@ -212,4 +212,3 @@ class YieldEstimation(nn.Module):
         # y = self.logsoftmax(y)
         # print(y)
         return timestep_features
-

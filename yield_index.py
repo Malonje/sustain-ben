@@ -160,41 +160,55 @@ class IndicesDataset():
 
 
 train_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
-                               split='train', satellite='s2', for_indice='gcvi')
+                               split='train', satellite='l8', for_indice='gcvi')
 test_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
-                               split='test', satellite='s2', for_indice='gcvi')
+                               split='test', satellite='l8', for_indice='gcvi')
 
 train_len = 1919
-test_len = 500
+test_len = 481
 # val_len =
 # test_len =
 train_loader = DataLoader(train_dataset, batch_size=train_len,shuffle=True, num_workers=0)
 test_loader  = DataLoader(test_dataset, batch_size=test_len,shuffle=True, num_workers=0)
-# for X,Y in tqdm(train_loader):
-#     X= X.numpy()
-#     Y=Y.numpy()
-#     np.save('/home/parichya/Documents/X.npy', X)
-#     np.save('/home/parichya/Documents/Y.npy', Y)
-#     # X, Y =
-X=np.load('/home/parichya/Documents/X.npy')
-Y=np.load('/home/parichya/Documents/Y.npy')
 
 
-
-X=np.nan_to_num(X)
-# print(X)
-# print(X[1])
-# print(Y.shape)
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size = 0.25)
-print(X_train.shape)
-regr = SDGRegressor()
-# print(1)
-regr.fit(X_train, y_train)
+# X_train=np.nan_to_num(X_train)
+# regr = SGDRegressor()
+# regr.fit(X_train, y_train)
+print('start')
+for X_train,y_train in tqdm(train_loader):
+    X_train=np.save('/home/parichya/Documents/X_l8.npy')
+    y_train=np.save('/home/parichya/Documents/Y_l8.npy')
+    print('saved')
+    X_train=np.nan_to_num(X_train)
+    y_train = y_train.numpy()
+    # print(X)
+    # print(X[1])
+    # print(Y.shape)
+    # X_train, y_train = X, Y
+    # print(X_train.shape)
+    regr = SDGRegressor()
+    # print(1)
+    regr.fit(X_train, y_train)
+    pred = regr.predict(X_train)
+    # y_train = y_train.numpy()
+    rmse = np.sqrt(np.mean((y_train - pred) ** 2))
+    print('RMSE Train: ', rmse)
+    print('Regression Score Train: ', regr.score(X_train, y_train))
 # print(3)
-true=np.asarray(y_test).flatten()
-pred = np.asarray(reg).flatten()
-rmse = np.sqrt(np.mean((true - pred) ** 2))
-print(regr.score(X_test, y_test))
+# true=np.asarray(y_test).flatten()
+for X_test,y_test in tqdm(test_loader):
+    X_test=np.nan_to_num(X_test)
+    y_test = y_test.numpy()
+    print(X_test.shape)
+    pred = regr.predict(X_test)
+    rmse = np.sqrt(np.mean((y_test - pred) ** 2))
+    print('RMSE Test: ', rmse)
+    print('Regression Score Test: ', regr.score(X_test, y_test))
+# pred = reg.predict
+# pred = np.asarray(reg).flatten()
+# rmse = np.sqrt(np.mean((true - pred) ** 2))
+# print(regr.score(X_test, y_test))
 #
 
 
@@ -211,38 +225,38 @@ model=model.float()
 criterion = torch.nn.MSELoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=learningRate)
 
+
 for epoch in range(epochs):
-    # for x_train, y_train in tqdm(train_loader):
-
-    # Converting inputs and labels to Variable
-    # if torch.cuda.is_available():
-    #     inputs = Variable(torch.from_numpy(x_train).cuda())
-    #     labels = Variable(torch.from_numpy(y_train).cuda())
-    # print(x_train.shape)
-    # print(x_train)
-
-    inputs = X#x_train
-    labels = Y#y_train
+    # print(type(inputs))
+    inputs = X_train
+    labels = y_train
     print(inputs.shape)
     inputs = torch.Tensor(inputs)
     labels = torch.Tensor(labels)
-    print(type(inputs))
     # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward, dont want to cummulate gradients
     optimizer.zero_grad()
 
     # get output from the model, given the inputs
     outputs = model(inputs.float())
-
+    outputs_ = outputs.detach().numpy()
+    # pred_= pred_.cpu().detach().numpy()
+    rmse_ = np.sqrt(np.mean((y_train - outputs_) ** 2))
     # get loss for the predicted output
     loss = criterion(outputs, labels)
-    print(loss)
+    # print(loss)
     # get gradients w.r.t to parameters
     loss.backward()
 
     # update parameters
     optimizer.step()
 
-    print('epoch {}, loss {}'.format(epoch, loss.item()))
-
-
+    print('epoch {}, loss {} RMSE {}'.format(epoch, loss.item(), rmse_))
+X_test = torch.Tensor(X_test)
+pred_ = model(X_test)
+# y_test = y_test.numpy()
+pred_ = pred_.detach().numpy()
+# pred_= pred_.cpu().detach().numpy()
+rmse_ = np.sqrt(np.mean((y_test - pred_) ** 2))
+print('RMSE Test nn: ', rmse_)
+# print('Regression Score: ', regr.score(X_test, y_test))
 
