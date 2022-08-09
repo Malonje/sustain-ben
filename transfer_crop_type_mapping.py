@@ -181,7 +181,7 @@ def train_dl_model(model, model_name, dataloaders, args):
 
                     inputs = temp_inputs
                     # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
-                    print(inputs.shape)
+                    # print(inputs.shape)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     inputs = inputs.cuda()

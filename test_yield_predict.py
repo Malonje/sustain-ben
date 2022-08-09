@@ -78,8 +78,8 @@ model = convnet.ConvModel(
     device=device,
 ).model
 # best_epoch=94
-checkpoint = torch.load(os.path.join(checkpoint_path, f"BESTepochS2.checkpoint.pth.tar"))
-model.load_state_dict(checkpoint["model_state_dict"])
+# checkpoint = torch.load(os.path.join(checkpoint_path, f"crop_yield_best_val(fluent-sun-33).pth.tar"))
+model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/crop_yield_best_val(fluent-sun-33).pth.tar'))
 
 if is_cuda:
     model = model.cuda()

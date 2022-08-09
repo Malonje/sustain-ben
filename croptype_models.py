@@ -92,7 +92,7 @@ def make_UNetFC_model(n_class, n_channel, timesteps, dropout, input_s):
     model = model.cuda()
     return model
 
-def get_model(model_name, input_shape,**kwargs ):
+def get_model(model_name, input_shape=(7,7  ),**kwargs ):
     """ Get appropriate model based on model_name and input arguments
     Args: 
       model_name - (str) which model to use 
