@@ -170,11 +170,11 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
                     inputs = temp_inputs
                     inputs = inputs.permute(0, 1, 4, 2, 3)
-                    print(inputs.shape)
+                    # print(inputs.shape)
                     preds = model(inputs.float())
 
                     loss, running_train_scores = l1_l2_loss(
-                        preds, targets, 1, running_train_scores
+                        preds, targets, 0, running_train_scores
                     )
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
@@ -195,6 +195,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                         # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
 
             rmse = round(np.array(running_train_scores["RMSE"]).mean(), 5)
+            loss = round(np.array(running_train_scores["loss"]).mean(), 5)
 
             if split == 'test':
                 print(f"[Test] RMSE: {rmse}")

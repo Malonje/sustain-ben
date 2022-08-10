@@ -1,6 +1,7 @@
 import torch.nn.functional as F
 from sklearn.metrics import r2_score
 import numpy as np
+import torch
 
 def l1_l2_loss(pred, true, l1_weight, scores_dict):
     """
@@ -24,6 +25,7 @@ def l1_l2_loss(pred, true, l1_weight, scores_dict):
     # print('pred shape:',pred.shape)
     # print('teue shape:',true.shape)
     loss = F.mse_loss(pred, true)
+    RMSE = torch.sqrt(loss).item()
 
     scores_dict["l2"].append(loss.item())
 
@@ -33,13 +35,10 @@ def l1_l2_loss(pred, true, l1_weight, scores_dict):
         scores_dict["l1"].append(l1.item())
     scores_dict["loss"].append(loss.item())
 
-
     true = true.detach().cpu().numpy().flatten()
     pred = pred.detach().cpu().numpy().flatten()
     assert (true.shape == pred.shape)
 
-    error = pred-true
-    RMSE = np.sqrt(np.mean(error**2))
     R2 = r2_score(true, pred)
     scores_dict["RMSE"].append(RMSE)
     return loss, scores_dict
