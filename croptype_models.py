@@ -150,7 +150,7 @@ class DateExtractor(nn.Module):
         self.dropout = nn.Dropout(p=dropout, inplace=True)
 
     def forward(self, x):
-        print(x.shape)
+        # print(x.shape)
         en3 = self.en3(x)
         en4 = self.en4(en3)
         center_in = self.center_in(en4)
