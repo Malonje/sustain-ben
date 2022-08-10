@@ -150,22 +150,22 @@ class DateExtractor(nn.Module):
         self.dropout = nn.Dropout(p=dropout, inplace=True)
 
     def forward(self, x):
-        print(x.shape)
+        # print(x.shape)
         en3 = self.en3(x)
         en4 = self.en4(en3)
         center_in = self.center_in(en4)
         # shape
-        print("center in sh", center_in.shape)
+        # print("center in sh", center_in.shape)
         center_in = center_in.permute(0, 2, 1, 3, 4)
-        print("center in sh", center_in.shape)
+        # print("center in sh", center_in.shape)
         shape = center_in.shape
         center_in = center_in.reshape(-1, np.prod(center_in.shape[2:]))
         # shape T X (BXHXW)
-        print("center in sh", center_in.shape)
+        # print("center in sh", center_in.shape)
         center_in = self.dropout(center_in)
         # center_in = center_in.permute(2, 0, 1, 3, 4)
         timestep_features = self.features(center_in)
-        print(timestep_features.shape)
+        # print(timestep_features.shape)
         y = self.date_predictions(timestep_features)
         y = y.reshape(shape[0], shape[1], -1)
         # print(y.shape)

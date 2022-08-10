@@ -358,6 +358,13 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
             if split in ['test']:
                 print(f"[Test] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
+                logger.log({
+                        f"Test F1": f1,
+                        f"Test RMSE": rmse,
+                        f"Test Accuracy": accuracy,
+                        f"Test Loss": loss,
+                        "X-Axis": i,
+                    })
                 # print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
             else:
                 if split == 'val':
