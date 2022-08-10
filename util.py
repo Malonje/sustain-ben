@@ -413,7 +413,9 @@ def get_train_parser():
     parser.add_argument('--weight_decay', type=float,
                         help="l2 regularization weight",
                         default=0)
-
+    parser.add_argument('--date_pred_for', type=str,
+                        help="For sowing, harvesting or transplating",
+                        default='sowing')
     parser.add_argument('--loss_weight', type=str2bool,
                         help="weighted cross entropy loss",
                         default=False)

@@ -124,13 +124,13 @@ class CauveryDataset(SustainBenchDataset):
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='cauvery',
                  resize_planet=False, calculate_bands=True, normalize=True, task="date_prediction",
                  l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9],
-                 ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32)):
+                 ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32), date_pred_for='sowing'):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
         self.task = task
         self._version = version
-
+        self.date_pred_for = date_pred_for
         self.l8_bands = l8_bands
         self.s1_bands = s1_bands
         self.s2_bands = s2_bands
@@ -303,7 +303,7 @@ class CauveryDataset(SustainBenchDataset):
         # s2 = self.pad(s2)
         # planet = self.pad(planet)
         return {'s1': s1[self.s1_bands], 's2': s2[self.s2_bands], 'l8': l8[self.l8_bands], 'planet': planet[self.ps_bands]}
-        
+
 
     def get_label(self, idx):
         """
@@ -311,11 +311,16 @@ class CauveryDataset(SustainBenchDataset):
         """
         if self.task == "yield":
             return torch.Tensor([self.y_array[idx][-1].item()])#.type(torch.LongTensor)
-        sowing = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
-        transplanting = self.y_array[idx][3].item() - 1
-        harvesting = self.y_array[idx][4].item() - 1
+        if self.date_pred_for=='sowing':
+            dpf = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
+        if self.date_pred_for=='transplanting':
+            dpf = self.y_array[idx][3].item() - 1
+        if self.date_pred_for=='harvesting':
+            dpf = self.y_array[idx][4].item() - 1
+        # transplanting = self.y_array[idx][3].item() - 1
+        # harvesting = self.y_array[idx][4].item() - 1
         # y = torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)
-        y = torch.Tensor([sowing]).type(torch.LongTensor)
+        y = torch.Tensor([dpf]).type(torch.LongTensor)
         return y
 
     def metrics(self, y_true, y_pred):
