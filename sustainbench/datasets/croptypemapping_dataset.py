@@ -231,7 +231,10 @@ class CropTypeMappingDataset(SustainBenchDataset):
         s1 = torch.from_numpy(s1).permute(1, 0, 2, 3)
         s2 = torch.from_numpy(s2).permute(1, 0, 2, 3)
         l8 = torch.from_numpy(l8).permute(1, 0, 2, 3)
-        planet = torch.from_numpy(planet).permute(1, 0, 2, 3)
+        try:
+            planet = torch.from_numpy(planet).permute(1, 0, 2, 3)
+        except:
+            planet = torch.zeros((4, 184, 108, 108))
 
         if self.resize_planet:
             s1 = s1.permute(3, 0, 1, 2)
