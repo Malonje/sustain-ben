@@ -416,6 +416,9 @@ def get_train_parser():
     parser.add_argument('--date_pred_for', type=str,
                         help="For sowing, harvesting or transplating",
                         default='sowing')
+    parser.add_argument('--use_actual_season', type=str2bool,
+                        help="Use actual season length for yield prediction",
+                        default='False')
     parser.add_argument('--loss_weight', type=str2bool,
                         help="weighted cross entropy loss",
                         default=False)

@@ -105,7 +105,7 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
-    run_name = logger.init(project='crop_yield_v2', reinit=True)
+    run_name = logger.init(project='crop_yield', reinit=True)
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"
@@ -370,7 +370,7 @@ def main(args):
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, task="yield",
                           l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands,
-                          truth_mask=truth_mask, img_dim=img_dimension)
+                          truth_mask=truth_mask, img_dim=img_dimension, actual_season=args.use_actual_season)
 
     dataloaders = dataset
 
