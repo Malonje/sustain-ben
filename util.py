@@ -419,6 +419,9 @@ def get_train_parser():
     parser.add_argument('--use_actual_season', type=str2bool,
                         help="Use actual season length for yield prediction",
                         default='False')
+    parser.add_argument('--run_name', type=str,
+                        help="String to be appended with the run name",
+                        default='')
     parser.add_argument('--loss_weight', type=str2bool,
                         help="weighted cross entropy loss",
                         default=False)

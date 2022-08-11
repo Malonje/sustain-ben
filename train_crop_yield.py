@@ -105,7 +105,7 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
-    run_name = logger.init(project='crop_yield', reinit=True)
+    run_name = logger.init(project='crop_yield', reinit=True, run_name=args.run_name)
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"
