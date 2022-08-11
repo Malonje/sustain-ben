@@ -347,7 +347,7 @@ def get_train_parser():
     parser.add_argument('--optimizer', type=str,
                         help="Optimizer to use for training",
                         default="adam",
-                        choices=('sgd', 'adam'))
+                        choices=('sgd', 'adam', 'adam_amsgrad'))
     parser.add_argument('--lr', type=float, default=0.003,
                         help="Initial learning rate to use")
     parser.add_argument('--momentum', type=float,
@@ -412,7 +412,7 @@ def get_train_parser():
 
     parser.add_argument('--weight_decay', type=float,
                         help="l2 regularization weight",
-                        default=0)
+                        default=0.01)
     parser.add_argument('--date_pred_for', type=str,
                         help="For sowing, harvesting or transplating",
                         default='sowing')
