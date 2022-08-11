@@ -11,7 +11,8 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 from sklearn import preprocessing, svm
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import SGDRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn import linear_model
 import tarfile
 import datetime
 from torch.utils.data import DataLoader
@@ -35,36 +36,26 @@ BANDS = {'l8': {'8': {'UBLUE': 0, 'BLUE': 1, 'GREEN': 2, 'RED': 3, 'NIR': 4, 'SW
                        'SWIR1': 8, 'SWIR2': 9},
                 '4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}},
          'planet': {'4': {'BLUE':   0, 'GREEN': 1, 'RED': 2, 'NIR': 3}}}
-def calc_gcvi(img, sat):
-    # print(img)
-    h = img.shape[1]
-    w = img.shape[2]
-    num_pixels = h * w
-    # print(img.shape)
-    # print(num_pixels)
-    if sat == 's2':
-        gcvi = (img[BANDS['s2']['10']['NIR']] / img[BANDS['s2']['10']['GREEN']]) - 1
-    if sat == 'l8':
-        gcvi = (img[BANDS['l8']['8']['NIR']] / img[BANDS['l8']['8']['GREEN']]) - 1
-    if sat == 's1':
-        gcvi = (img[BANDS['planet']['4']['NIR']] / img[BANDS['planet']['4']['GREEN']]) - 1
-    # gcvi = gcvi / num_pixels
+
+n_bands = {
+    's2': '10',
+    'l8': '8',
+    'planet': '4',
+}
+
+def calc_index(index, img, sat):
+    if index == 'gcvi':
+        computed_index = (img[BANDS[sat][n_bands[sat]]['NIR']] / img[BANDS[sat][n_bands[sat]]['GREEN']]) - 1
+    elif index == 'ndvi':
+        computed_index = (img[BANDS[sat][n_bands[sat]]['NIR']] - img[BANDS[sat][n_bands[sat]]['RED']]) / (
+                    img[BANDS[sat][n_bands[sat]]['NIR']] + img[BANDS[sat][n_bands[sat]]['RED']])
+    elif index == 'recl':
+        computed_index = (img[BANDS[sat][n_bands[sat]]['NIR']] / img[BANDS[sat][n_bands[sat]]['RED']]) - 1
     ans = []
-    # print(gcvi.shape)
-    gcvi = gcvi.transpose(2, 0, 1)
-    # print(gcvi.shape)
-    for k in range(gcvi.shape[0]):
-        # print(k)
-        # sum=0
-        # for i in range(gcvi.shape[0]):
-        #     for j in range(gcvi.shape[1]):
-        #         sum += gcvi[i][j][k]
-        # print(gcvi[k].shape)
-        ans.append(np.average(gcvi[k])/num_pixels)
-    # ans = torch.Tensor(ans)
-    # print(ans)
+    computed_index = computed_index.transpose(2, 0, 1)
+    for t in range(computed_index.shape[0]):
+        ans.append(np.mean(computed_index[t]))
     ans=np.asarray(ans)
-    # print(type(ans))
     return ans
 
 
@@ -95,7 +86,7 @@ class IndicesDataset():
         self.for_indice = for_indice
         self.satellite = satellite
         self.csv = pd.read_csv(self.data_dir+self.country+'/cauvery_dataset.csv')
-        self.csv = self.csv[self.csv['SPLIT']==self.split].reset_index(drop=True)
+        self.csv = self.csv[self.csv['SPLIT_YIELD']==self.split].reset_index(drop=True)
 
     def __len__(self):
         return len(self.csv)
@@ -125,12 +116,18 @@ class IndicesDataset():
 
         s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        coords = np.argwhere(mask_l8==plot_id)
+        if len(coords) == 0:
+            l8 = np.zeros((l8.shape[3], l8.shape[0], s2.shape[2], s2.shape[3]))
+        else:
+            x_min, y_min = np.min(coords,axis=0)
+            x_max, y_max = np.max(coords,axis=0)
+            l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        coords = np.argwhere(mask_ps==plot_id)
+        x_min, y_min = np.min(coords,axis=0)
+        x_max, y_max = np.max(coords,axis=0)
         planet = (mask_ps * planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
 
-
-        if l8.shape[2] == 0 or l8.shape[3] == 0:
-            l8 = np.zeros((l8.shape[0], l8.shape[1], s2.shape[2], s2.shape[3]))
 
         #APPLY FUNCTION TO CALCULATE INDICES
         # if self.transform:
@@ -150,8 +147,7 @@ class IndicesDataset():
 
         #CLACULATE INCIDES
         X = X.transpose(1, 2, 3, 0)
-        if self.for_indice == 'gcvi':
-            X = calc_gcvi(X, self.satellite)
+        X = calc_index(self.for_indice, X, self.satellite)
 
 
         return [X, Y]
@@ -159,15 +155,16 @@ class IndicesDataset():
 
 
 
-train_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
-                               split='train', satellite='l8', for_indice='gcvi')
-test_dataset = IndicesDataset(data_dir= '/home/parichya/Documents/', country='cauvery',
-                               split='test', satellite='l8', for_indice='gcvi')
+train_dataset = IndicesDataset(data_dir= '../Dataset/', country='cauvery',
+                               split='train', satellite='l8', for_indice='recl')
+test_dataset = IndicesDataset(data_dir= '../Dataset/', country='cauvery',
+                               split='test', satellite='l8', for_indice='recl')
 
-train_len = 1919
-test_len = 481
+train_len = len(train_dataset)
+test_len = len(test_dataset)
 # val_len =
 # test_len =
+print(train_len, test_len)
 train_loader = DataLoader(train_dataset, batch_size=train_len,shuffle=True, num_workers=0)
 test_loader  = DataLoader(test_dataset, batch_size=test_len,shuffle=True, num_workers=0)
 
@@ -175,11 +172,14 @@ test_loader  = DataLoader(test_dataset, batch_size=test_len,shuffle=True, num_wo
 # X_train=np.nan_to_num(X_train)
 # regr = SGDRegressor()
 # regr.fit(X_train, y_train)
-print('start')
+# print('start')
+# regr = LinearRegression()
+regr = linear_model.Lasso(alpha=0.1)
+rmse = []
 for X_train,y_train in tqdm(train_loader):
-    X_train=np.save('/home/parichya/Documents/X_l8.npy')
-    y_train=np.save('/home/parichya/Documents/Y_l8.npy')
-    print('saved')
+    # X_train=np.save('/home/parichya/Documents/X_l8.npy')
+    # y_train=np.save('/home/parichya/Documents/Y_l8.npy')
+    # print('saved')
     X_train=np.nan_to_num(X_train)
     y_train = y_train.numpy()
     # print(X)
@@ -187,24 +187,24 @@ for X_train,y_train in tqdm(train_loader):
     # print(Y.shape)
     # X_train, y_train = X, Y
     # print(X_train.shape)
-    regr = SDGRegressor()
     # print(1)
     regr.fit(X_train, y_train)
     pred = regr.predict(X_train)
     # y_train = y_train.numpy()
-    rmse = np.sqrt(np.mean((y_train - pred) ** 2))
-    print('RMSE Train: ', rmse)
-    print('Regression Score Train: ', regr.score(X_train, y_train))
+    rmse.append(np.sqrt(np.mean((y_train - pred) ** 2)))
+print('RMSE Train: ', sum(rmse) / len(rmse))
+    # print('Regression Score Train: ', regr.score(X_train, y_train))
 # print(3)
 # true=np.asarray(y_test).flatten()
+rmse = []
 for X_test,y_test in tqdm(test_loader):
     X_test=np.nan_to_num(X_test)
     y_test = y_test.numpy()
     print(X_test.shape)
     pred = regr.predict(X_test)
-    rmse = np.sqrt(np.mean((y_test - pred) ** 2))
-    print('RMSE Test: ', rmse)
-    print('Regression Score Test: ', regr.score(X_test, y_test))
+    rmse.append(np.sqrt(np.mean((y_test - pred) ** 2)))
+print('RMSE Test: ', sum(rmse) / len(rmse))
+# print('Regression Score Test: ', regr.score(X_test, y_test))
 # pred = reg.predict
 # pred = np.asarray(reg).flatten()
 # rmse = np.sqrt(np.mean((true - pred) ** 2))
@@ -212,51 +212,51 @@ for X_test,y_test in tqdm(test_loader):
 #
 
 
-inputDim = 184       # takes variable 'x'
-outputDim = 1       # takes variable 'y'
-learningRate = 0.1
-epochs = 100
-
-model = linearRegression(inputDim, outputDim)
-model=model.float()
-##### For GPU #######
-# if torch.cuda.is_available():
-#     model.cuda()
-criterion = torch.nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=learningRate)
-
-
-for epoch in range(epochs):
-    # print(type(inputs))
-    inputs = X_train
-    labels = y_train
-    print(inputs.shape)
-    inputs = torch.Tensor(inputs)
-    labels = torch.Tensor(labels)
-    # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward, dont want to cummulate gradients
-    optimizer.zero_grad()
-
-    # get output from the model, given the inputs
-    outputs = model(inputs.float())
-    outputs_ = outputs.detach().numpy()
-    # pred_= pred_.cpu().detach().numpy()
-    rmse_ = np.sqrt(np.mean((y_train - outputs_) ** 2))
-    # get loss for the predicted output
-    loss = criterion(outputs, labels)
-    # print(loss)
-    # get gradients w.r.t to parameters
-    loss.backward()
-
-    # update parameters
-    optimizer.step()
-
-    print('epoch {}, loss {} RMSE {}'.format(epoch, loss.item(), rmse_))
-X_test = torch.Tensor(X_test)
-pred_ = model(X_test)
-# y_test = y_test.numpy()
-pred_ = pred_.detach().numpy()
-# pred_= pred_.cpu().detach().numpy()
-rmse_ = np.sqrt(np.mean((y_test - pred_) ** 2))
-print('RMSE Test nn: ', rmse_)
-# print('Regression Score: ', regr.score(X_test, y_test))
+# inputDim = 184       # takes variable 'x'
+# outputDim = 1       # takes variable 'y'
+# learningRate = 0.1
+# epochs = 100
+#
+# model = linearRegression(inputDim, outputDim)
+# model=model.float()
+# ##### For GPU #######
+# # if torch.cuda.is_available():
+# #     model.cuda()
+# criterion = torch.nn.MSELoss()
+# optimizer = torch.optim.SGD(model.parameters(), lr=learningRate)
+#
+#
+# for epoch in range(epochs):
+#     # print(type(inputs))
+#     inputs = X_train
+#     labels = y_train
+#     print(inputs.shape)
+#     inputs = torch.Tensor(inputs)
+#     labels = torch.Tensor(labels)
+#     # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward, dont want to cummulate gradients
+#     optimizer.zero_grad()
+#
+#     # get output from the model, given the inputs
+#     outputs = model(inputs.float())
+#     outputs_ = outputs.detach().numpy()
+#     # pred_= pred_.cpu().detach().numpy()
+#     rmse_ = np.sqrt(np.mean((y_train - outputs_) ** 2))
+#     # get loss for the predicted output
+#     loss = criterion(outputs, labels)
+#     # print(loss)
+#     # get gradients w.r.t to parameters
+#     loss.backward()
+#
+#     # update parameters
+#     optimizer.step()
+#
+#     print('epoch {}, loss {} RMSE {}'.format(epoch, loss.item(), rmse_))
+# X_test = torch.Tensor(X_test)
+# pred_ = model(X_test)
+# # y_test = y_test.numpy()
+# pred_ = pred_.detach().numpy()
+# # pred_= pred_.cpu().detach().numpy()
+# rmse_ = np.sqrt(np.mean((y_test - pred_) ** 2))
+# print('RMSE Test nn: ', rmse_)
+# # print('Regression Score: ', regr.score(X_test, y_test))
 
