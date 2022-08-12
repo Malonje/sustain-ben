@@ -361,7 +361,7 @@ def get_train_parser():
                         default=True)
     parser.add_argument('--use_testing', type=str2bool,
                         help="shuffle dataset between epochs?",
-                        default=False)
+                        default=True)
     parser.add_argument('--use_l8', type=str2bool,
                         help="use l8 data?",
                         default=False)
