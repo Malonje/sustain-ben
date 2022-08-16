@@ -162,7 +162,7 @@ STDS = {'l8': {'cauvery': np.array([ 9900.16857204, 9776.42869284, 9109.375738, 
             'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
 # OTHER PER COUNTRY CONSTANTS
-NUM_CLASSES = {'cauvery': 3,
+NUM_CLASSES = {'cauvery': 2,
               'ghana': 4,
                'southsudan': 4,
                'tanzania': 5,

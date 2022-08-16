@@ -115,7 +115,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         'use_planet': args.use_planet,
         'use_actual_season': args.use_actual_season
     }
-    run_name = logger.init(project='crop_yield', reinit=True, run_name=args.run_name, config=config)
+    run_name = logger.init(project='crop_yield_v3', reinit=True, run_name=args.run_name, config=config)
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"
