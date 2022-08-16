@@ -478,7 +478,7 @@ def get_train_parser():
     # Arguments for number of bands to use
     parser.add_argument('--s2_num_bands', type=int, default=10,
                         help="Number of bands to use from Sentinel-2")
-    parser.add_argument('--l8_bands', type=str, default='[0,1,2,3,4,5,6]',
+    parser.add_argument('--l8_bands', type=str, default=None,
                         help="Number of bands to use from Landsat-8")
     parser.add_argument('--s1_bands', type=str, default=None,
                         help="Number of bands to use from Sentinel-1")
