@@ -322,12 +322,15 @@ class CauveryDataset(SustainBenchDataset):
         """
         if self.task == "yield":
             return torch.Tensor([self.y_array[idx][-1].item()])#.type(torch.LongTensor)
-        if self.date_pred_for=='sowing':
+        elif self.date_pred_for=='sowing':
             dpf = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
-        if self.date_pred_for=='transplanting':
+        elif self.date_pred_for=='transplanting':
             dpf = self.y_array[idx][3].item() - 1
-        if self.date_pred_for=='harvesting':
+        elif self.date_pred_for=='harvesting':
             dpf = self.y_array[idx][4].item() - 1
+        elif self.date_pred_for == 'unified':
+            return torch.Tensor([self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0,
+                                 self.y_array[idx][4].item() - 1]).type(torch.LongTensor)
         # transplanting = self.y_array[idx][3].item() - 1
         # harvesting = self.y_array[idx][4].item() - 1
         # y = torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)

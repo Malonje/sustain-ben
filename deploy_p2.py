@@ -562,7 +562,10 @@ def cropout(t,inp,s):  # pass output from model of shape(Nxsxs) with the origina
 # #     model = croptype_models.get_model( **vars(args))
 # #     # model.load_state_dict(torch.load(f"../model_weights/crop_yield_best_val({run_name}).pth.tar"))
 # #     return model
-
+def norm_plot(a):
+    row_sums = a.sum(axis=1)
+    new_matrix = a / row_sums[:, numpy.newaxis]
+    return a
 
 
 def make_input_patch(img,i,j,crop_to_dim):

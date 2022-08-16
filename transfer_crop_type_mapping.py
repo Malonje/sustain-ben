@@ -110,7 +110,7 @@ def train_dl_model(model, model_name, dataloaders, args):
         'use_s2': args.use_s2,
         'use_planet': args.use_planet,
     }
-    run_name = logger.init(project='crop_type_mapping', reinit=True, run_name=args.run_name, config=config)
+    run_name = logger.init(project='crop_type_mapping_v3', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:

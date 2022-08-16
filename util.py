@@ -317,9 +317,9 @@ def get_num_bands(kwargs):
     if kwargs.get('use_l8'):
         num_bands['l8'] = (len(kwargs.get('l8_bands').split(",")) + added_doy + added_indices) if kwargs.get('l8_bands') is not None else L8_NUM_BANDS + added_doy + added_indices
     if kwargs.get('use_s1'):
-        num_bands['s1'] = (len(kwargs.get('s1_bands').split(",")) + added_doy + added_indices) if kwargs.get('s1_bands') is not None else S1_NUM_BANDS + added_doy
+        num_bands['s1'] = (len(kwargs.get('s1_bands').split(","))) if kwargs.get('s1_bands') is not None else S1_NUM_BANDS + added_doy
     if kwargs.get('use_s2'):
-        num_bands['s2'] = (len(kwargs.get('s2_bands').split(",")) + added_doy + added_indices) if kwargs.get('s2_bands') is not None else kwargs.get('s2_num_bands') + added_doy + added_clouds + added_indices
+        num_bands['s2'] = (len(kwargs.get('s2_bands').split(",")) + added_doy + added_indices) if kwargs.get('s2_bands') is not None else S2_NUM_BANDS + added_doy + added_clouds + added_indices
     if kwargs.get('use_planet'):
         num_bands['planet'] = (len(kwargs.get('ps_bands').split(",")) + added_doy + added_indices) if kwargs.get('ps_bands') is not None else PLANET_NUM_BANDS + added_doy + added_indices
 
@@ -384,7 +384,7 @@ def get_train_parser():
                         default=15)
     parser.add_argument('--num_workers', type=int,
                         help="Number of workers to use for pulling data",
-                        default=8)
+                        default=12)
     # TODO: find correct string name
     parser.add_argument('--path_to_cauvery_images', type=str,
                         help="PATH_TO_CAUVERY_IMAGES",
