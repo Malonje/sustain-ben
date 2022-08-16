@@ -333,7 +333,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         else:
             label = np.load(os.path.join(self.data_dir, self.country, f'truth@{self.truth_mask}m', f'{self.country}_{loc_id}.npz'))
             label = torch.from_numpy(np.expand_dims(label['crop_type'], 0))
-            label = transforms.Resize(self.img_dim)(label)[0]
+            label = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(label)[0].to(torch.int)
         return label
 
     def get_dates(self, json_file):

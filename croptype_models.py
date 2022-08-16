@@ -103,7 +103,6 @@ def get_model(model_name, input_shape=(7,7  ),**kwargs ):
     """
 
     model = None
-
     if model_name == 'unet3d':
         pretrained_model_path = kwargs.get('croptype_weights')
         num_bands = get_num_bands(kwargs)['all']
@@ -140,26 +139,26 @@ class DateExtractor(nn.Module):
         super(DateExtractor, self).__init__()
 
         feats = in_channel
-        #self.en3 = conv_block(in_channel, feats*4, feats*4)
-        #self.en4 = conv_block(feats*4, feats*8, feats*8)
-        self.center_in = center_in(feats, feats*8)
-        self.features = nn.Linear(feats*8*input_s*input_s, feats*16)
-        self.date_predictions = nn.Linear(feats*16, n_classes)
+        self.en3 = conv_block(in_channel, feats*4, feats*4)
+        self.en4 = conv_block(feats*4, feats*8, feats*8)
+        self.center_in = center_in(feats*8, feats*16)
+        self.features = nn.Linear(feats*16*input_s*input_s*timesteps, feats*16)
+        self.date_predictions = nn.Linear(feats*16, timesteps)
 
         self.logsoftmax = nn.LogSoftmax(dim=1)
         self.dropout = nn.Dropout(p=dropout, inplace=True)
 
     def forward(self, x):
         # print(x.shape)
-        #en3 = self.en3(x)
-        #en4 = self.en4(en3)
-        center_in = self.center_in(x)
+        en3 = self.en3(x)
+        en4 = self.en4(en3)
+        center_in = self.center_in(en4)
         # shape
         # print("center in sh", center_in.shape)
         center_in = center_in.permute(0, 2, 1, 3, 4)
         # print("center in sh", center_in.shape)
         shape = center_in.shape
-        center_in = center_in.reshape(-1, np.prod(center_in.shape[2:]))
+        center_in = center_in.reshape(-1, np.prod(center_in.shape[1:]))
         # shape T X (BXHXW)
         # print("center in sh", center_in.shape)
         center_in = self.dropout(center_in)
@@ -179,20 +178,20 @@ class YieldEstimation(nn.Module):
     def __init__(self,  in_channel, n_classes, timesteps, dropout, input_s):
         super(YieldEstimation, self).__init__()
 
-        feats = in_channel
-        #self.en3 = conv_block(in_channel, feats*4, feats*4)
-        #self.en4 = conv_block(feats*4, feats*8, feats*8)
-        self.center_in = center_in(feats, feats*8)
-        self.features = nn.Linear(feats*8*input_s*input_s*timesteps, n_classes)
+        feats = 16
+        self.en3 = conv_block(in_channel, feats*4, feats*4)
+        self.en4 = conv_block(feats*4, feats*8, feats*8)
+        self.center_in = center_in(feats*8, feats*16)
+        self.features = nn.Linear(feats*16*input_s*input_s*timesteps, n_classes)
         # self.crop_yield = nn.Linear(feats*16*timesteps, n_classes)
 
         self.dropout = nn.Dropout(p=dropout, inplace=True)
 
     def forward(self, x):
         # print(x.shape)
-        #en3 = self.en3(x)
-        #en4 = self.en4(en3)
-        center_in = self.center_in(x)
+        en3 = self.en3(x)
+        en4 = self.en4(en3)
+        center_in = self.center_in(en4)
         # shape
         # print("center in sh", center_in.shape)
         center_in = center_in.permute(0, 2, 1, 3, 4)

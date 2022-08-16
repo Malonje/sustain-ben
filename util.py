@@ -333,6 +333,8 @@ def get_train_parser():
     parser.add_argument('--model_name', type=str,
                         help="model's name",
                         default='unet3d')
+
+
     parser.add_argument('--dataset', type=str,
                         help="Full or small?",
                         choices=('full', 'small'),
