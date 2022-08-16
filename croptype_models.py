@@ -125,6 +125,7 @@ def get_model(model_name, input_shape=(7,7  ),**kwargs ):
                                       timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'), input_s=input_shape[0])
     elif model_name == 'unet-fc-yield':
         num_bands = get_num_bands(kwargs)['all']
+        print(num_bands)
         model = YieldEstimation(num_bands, 1, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'), input_s=input_shape[0])
         model = model.cuda()
 

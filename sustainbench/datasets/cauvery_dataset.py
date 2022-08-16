@@ -215,19 +215,19 @@ class CauveryDataset(SustainBenchDataset):
 
         # cropped = img[ : , : , x_min:x_max+1, y_min:y_max+1]
         # print(s1.shape, s2.shape)
-        s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        s1 = (s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        s2 = (s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         coords = np.argwhere(mask_l8 == plot_id)
         if len(coords) == 0:
             l8 = np.zeros((l8.shape[3], l8.shape[0], s2.shape[2], s2.shape[3]))
         else:
             x_min, y_min = np.min(coords, axis=0)
             x_max, y_max = np.max(coords, axis=0)
-            l8 = (mask_l8 * l8.transpose(3, 0, 1, 2))[:, :, x_min:x_max + 1, y_min:y_max + 1]
+            l8 = (l8.transpose(3, 0, 1, 2))[:, :, x_min:x_max + 1, y_min:y_max + 1]
         coords = np.argwhere(mask_ps==plot_id)
         x_min, y_min = np.min(coords,axis=0)
         x_max, y_max = np.max(coords,axis=0)
-        planet = (mask_ps * planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        planet = (planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
 
 
         if l8.shape[2] == 0 or l8.shape[3] == 0:
