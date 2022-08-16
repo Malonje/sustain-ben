@@ -11,7 +11,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 from sklearn import preprocessing, svm
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn import linear_model
 import tarfile
 import datetime
@@ -51,6 +51,9 @@ def calc_index(index, img, sat):
                     img[BANDS[sat][n_bands[sat]]['NIR']] + img[BANDS[sat][n_bands[sat]]['RED']])
     elif index == 'recl':
         computed_index = (img[BANDS[sat][n_bands[sat]]['NIR']] / img[BANDS[sat][n_bands[sat]]['RED']]) - 1
+    elif index == 'rvi':
+        computed_index = 4 * img[BANDS[sat]['VH']] / (
+                    img[BANDS[sat]['VH']] + img[BANDS[sat]['VV']])
     ans = []
     computed_index = computed_index.transpose(2, 0, 1)
     for t in range(computed_index.shape[0]):
@@ -114,15 +117,15 @@ class IndicesDataset():
         x_min, y_min = np.min(coords,axis=0)
         x_max, y_max = np.max(coords,axis=0)
 
-        s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        s1 = (s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        s2 = (s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         coords = np.argwhere(mask_l8==plot_id)
         if len(coords) == 0:
             l8 = np.zeros((l8.shape[3], l8.shape[0], s2.shape[2], s2.shape[3]))
         else:
             x_min, y_min = np.min(coords,axis=0)
             x_max, y_max = np.max(coords,axis=0)
-            l8 = (mask_l8 * l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+            l8 = (l8.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         coords = np.argwhere(mask_ps==plot_id)
         x_min, y_min = np.min(coords,axis=0)
         x_max, y_max = np.max(coords,axis=0)
@@ -134,6 +137,8 @@ class IndicesDataset():
         #     sample = self.transform(sample)
 
         Y = self.csv['YIELD'][idx]
+        sowing = int(self.csv['SOWING_DAY'][idx]) - 1 if self.csv['SOWING_DAY'][idx] > 0 else 0
+        harvesting = int(self.csv['HARVESTING_DAY'][idx]) - 1
 
 
         if self.satellite == 'l8':
@@ -145,8 +150,11 @@ class IndicesDataset():
         if self.satellite == 'planet':
             X = planet
 
+
         #CLACULATE INCIDES
         X = X.transpose(1, 2, 3, 0)
+        X[:, :, :, :sowing] = np.zeros_like(X[:, :, :, :sowing])
+        X[:, :, :, harvesting + 1:] = np.zeros_like(X[:, :, :, harvesting + 1:])
         X = calc_index(self.for_indice, X, self.satellite)
 
 
@@ -156,9 +164,9 @@ class IndicesDataset():
 
 
 train_dataset = IndicesDataset(data_dir= '../Dataset/', country='cauvery',
-                               split='train', satellite='l8', for_indice='recl')
+                               split='train', satellite='s1', for_indice='rvi')
 test_dataset = IndicesDataset(data_dir= '../Dataset/', country='cauvery',
-                               split='test', satellite='l8', for_indice='recl')
+                               split='test', satellite='s1', for_indice='rvi')
 
 train_len = len(train_dataset)
 test_len = len(test_dataset)
@@ -174,7 +182,10 @@ test_loader  = DataLoader(test_dataset, batch_size=test_len,shuffle=True, num_wo
 # regr.fit(X_train, y_train)
 # print('start')
 # regr = LinearRegression()
-regr = linear_model.Lasso(alpha=0.1)
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+pipe = make_pipeline(StandardScaler(), linear_model.LassoCV())
+# regr = LogisticRegression(max_iter=200)
 rmse = []
 for X_train,y_train in tqdm(train_loader):
     # X_train=np.save('/home/parichya/Documents/X_l8.npy')
@@ -188,8 +199,8 @@ for X_train,y_train in tqdm(train_loader):
     # X_train, y_train = X, Y
     # print(X_train.shape)
     # print(1)
-    regr.fit(X_train, y_train)
-    pred = regr.predict(X_train)
+    pipe.fit(X_train, y_train)
+    pred = pipe.predict(X_train)
     # y_train = y_train.numpy()
     rmse.append(np.sqrt(np.mean((y_train - pred) ** 2)))
 print('RMSE Train: ', sum(rmse) / len(rmse))
@@ -201,7 +212,7 @@ for X_test,y_test in tqdm(test_loader):
     X_test=np.nan_to_num(X_test)
     y_test = y_test.numpy()
     print(X_test.shape)
-    pred = regr.predict(X_test)
+    pred = pipe.predict(X_test)
     rmse.append(np.sqrt(np.mean((y_test - pred) ** 2)))
 print('RMSE Test: ', sum(rmse) / len(rmse))
 # print('Regression Score Test: ', regr.score(X_test, y_test))
