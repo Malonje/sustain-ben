@@ -98,7 +98,7 @@ def maskForMetric(y_pred, y_true):
     # print(y_true.shape)  #torch.Size([8192, 4])
     # print(y_pred.shape)  #torch.Size([8192, 4])
     _, y_true = torch.max(y_true, dim=1)
-    _, y_pred = torch.max(y_pred, dim=1)
+    y_pred = torch.where(y_pred > 0.5, 1, 0).squeeze()
 
     # print(y_true.shape)  # torch.Size([8192])
     # print(y_pred.shape)  #torch.Size([8192])
