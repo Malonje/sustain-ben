@@ -109,7 +109,7 @@ def get_model(model_name, input_shape=(7,7  ),**kwargs ):
         num_bands = get_num_bands(kwargs)['all']
         print(pretrained_model_path)
         if pretrained_model_path is None:
-            model = make_UNet3D_model(n_class=NUM_CLASSES[kwargs.get('country')], n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
+            model = make_UNet3D_model(n_class=1, n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
         else:
             model = make_UNet3D_model_pretrained(n_class=NUM_CLASSES[kwargs.get('country')], n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
             pretrained_dict = torch.load(pretrained_model_path)

@@ -106,11 +106,13 @@ def mask_ce_loss(y_true, y_pred, reduction, country, loss_weight=False, weight_s
     y_pred = preprocess.reshapeForLoss(y_pred)
 
 
-    y_pred, y_true = preprocess.maskForLoss(y_pred, y_true) 
+    y_pred, y_true = preprocess.maskForLoss(y_pred, y_true)
     if loss_weight:
         loss_fn = nn.NLLLoss(weight=LOSS_WEIGHT[country] ** weight_scale, reduction="none")
     else:
-        loss_fn = nn.NLLLoss(reduction="none") 
+        loss_fn = nn.BCELoss(reduction="none")
+    y_pred = y_pred.squeeze().float()
+    y_true = y_true.squeeze().float()
 
     total_loss = torch.sum(loss_fn(y_pred, y_true.cuda()))
 
