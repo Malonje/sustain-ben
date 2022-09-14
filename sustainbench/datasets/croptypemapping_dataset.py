@@ -12,6 +12,10 @@ import torchvision.transforms as transforms
 from sklearn.metrics import f1_score, accuracy_score
 from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS, MEANS, STDS
 
+
+# for augmentation
+# from torchsat.transforms import transforms_cls, transforms_det, transforms_seg
+# import albumentations as A
 # BAND STATS
 
 
@@ -227,7 +231,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         s2 = np.asarray(s2)
         l8 = np.asarray(l8)
         planet = np.asarray(planet)
-
+        
         s1 = torch.from_numpy(s1).permute(1, 0, 2, 3)
         s2 = torch.from_numpy(s2).permute(1, 0, 2, 3)
         l8 = torch.from_numpy(l8).permute(1, 0, 2, 3)
@@ -239,15 +243,27 @@ class CropTypeMappingDataset(SustainBenchDataset):
         if self.resize_planet:
             s1 = s1.permute(3, 0, 1, 2)
             s1 = transforms.Resize(self.img_dim)(s1)
+            s1 = s1[:, :, None, :,:]
+            # s1= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(s1)
+            s1=torch.squeeze(s1, 2)
             s1 = s1.permute(1, 2, 3, 0)
             s2 = s2.permute(3, 0, 1, 2)
             s2 = transforms.Resize(self.img_dim)(s2)
+            s2 = s2[:, :, None, :,:]
+            # s2= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(s2)
+            s2=torch.squeeze(s2, 2)
             s2 = s2.permute(1, 2, 3, 0)
             l8 = l8.permute(3, 0, 1, 2)
             l8 = transforms.Resize(self.img_dim)(l8)
-            l8 = l8.permute(1, 2, 3, 0)
+            l8 = l8[:, :, None, :,:]
+            # l8= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(l8)
+            l8=torch.squeeze(l8, 2)
+            l8 = l8.permute(1, 2, 3, 0)  ## torch.Size([8, 12, 12, 11])
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.Resize(self.img_dim)(planet)
+            planet = planet[:, :, None, :,:]
+            # planet= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(planet)
+            planet=torch.squeeze(planet, 2)
             planet = planet.permute(1, 2, 3, 0)
         else:
             s1 = s1.permute(3, 0, 1, 2)
@@ -262,7 +278,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             planet = planet.permute(3, 0, 1, 2)
             planet = transforms.CenterCrop(PLANET_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
-
+        #print('chck_now:',l8.shape)
         # Include NDVI and GCVI for s2 and planet, calculate before normalization and numband selection
         if self.calculate_bands:
             ndvi_s2 = (s2[BANDS['s2']['10']['NIR']] - s2[BANDS['s2']['10']['RED']]) / (
@@ -283,24 +299,23 @@ class CropTypeMappingDataset(SustainBenchDataset):
             gcvi_l8[l8[BANDS['l8']['8']['GREEN'], :, :, :] == 0] = 0
             ndvi_planet[(planet[BANDS['planet']['4']['NIR'], :, :, :] + planet[BANDS['planet']['4']['RED'], :, :, :]) == 0] = 0
             gcvi_planet[planet[BANDS['planet']['4']['GREEN'], :, :, :] == 0] = 0
-
+        #print('bedore normal:',l8.shape)
         if self.normalize:
             s1 = self.normalization(s1, 's1')
             s2 = self.normalization(s2, 's2')
             l8 = self.normalization(l8, 'l8')
             planet = self.normalization(planet, 'planet')
-
         # Concatenate calculated bands
         if self.calculate_bands:
             s2 = torch.cat((s2, torch.unsqueeze(ndvi_s2, 0), torch.unsqueeze(gcvi_s2, 0)), 0)
             planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
             l8 = torch.cat((l8, torch.unsqueeze(ndvi_l8, 0), torch.unsqueeze(gcvi_l8, 0)), 0)
-
+        #print('before pad:', l8.shape)
         s1 = self.pad(s1)
         s2 = self.pad(s2)
         l8 = self.pad(l8)
         planet = self.pad(planet)
-
+        #print('after_pad:', l8.shape)
         if self._split_scheme in ['official', 'ghana', 'southsudan']:
             ## add code to get 32X32 from 64X64 using indexes
             grid_id = self.grid_id[idx].item()
@@ -451,4 +466,3 @@ class CropTypeMappingDataset(SustainBenchDataset):
         """
         True if aditional bands (NDVI and GCVI) will be calculated on the fly and appended
         """
-        return self._calculate_bands
