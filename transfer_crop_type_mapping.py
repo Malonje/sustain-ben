@@ -89,7 +89,7 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
         if reduction == "avg":
             loss, confidence = loss_fn(labels, preds, reduction, country, loss_weight, weight_scale)
 
-            accuracy = metrics.get_accuracy(model_name, labels, model_name, reduction=reduction)
+            accuracy = metrics.get_accuracy(model_name, preds, labels, reduction=reduction)
             return loss, cm, accuracy, confidence
         elif reduction == "sum":
             loss, confidence, _ = loss_fn(labels, preds, reduction, country, loss_weight, weight_scale)
@@ -100,7 +100,17 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args):
-    run_name = logger.init(project='crop_type_mapping', reinit=True)
+    config = {
+        'optimizer': args.optimizer,
+        'lr': args.lr,
+        'weight_decay': args.weight_decay,
+        'batch_size': args.batch_size,
+        'use_l8': args.use_l8,
+        'use_s1': args.use_s1,
+        'use_s2': args.use_s2,
+        'use_planet': args.use_planet,
+    }
+    run_name = logger.init(project='crop_type_mapping_v3', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:
@@ -130,6 +140,7 @@ def train_dl_model(model, model_name, dataloaders, args):
         for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
             correct_pixels = 0
             total_pixels = 0
+            losses = []
             train_data = dataloaders.get_subset(split)
 
             if split == 'train':
@@ -195,6 +206,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                                                                                    gamma=args.gamma)
                     correct_pixels += total_correct
                     total_pixels += num_pixels
+                    losses.append(loss)
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
@@ -216,11 +228,13 @@ def train_dl_model(model, model_name, dataloaders, args):
             accuracy = correct_pixels / total_pixels
 
             if split == 'test':
-                print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}, "
+                      f"Loss: {sum(losses) / len(losses)}")
             else:
                 if split == 'val':
                     logger.log({
                         f"Validation Accuracy": accuracy,
+                        f"Validation Loss": sum(losses) / len(losses),
                         "X-Axis": i,
                     })
                     print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
@@ -230,6 +244,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                 else:
                     logger.log({
                         f"Train Accuracy": accuracy,
+                        f"Train Loss": sum(losses) / len(losses),
                         "X-Axis": i
                     })
                     print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")

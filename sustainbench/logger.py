@@ -4,11 +4,10 @@ import datetime
 import pandas as pd
 
 
-def init(project="dilineation", reinit=True):
+def init(project="dilineation", reinit=True, run_name='', config={}):
     # dataset_type = opts['dataset_type']
-    wandb.init(project=project, entity='ai4sg', reinit=reinit)
-    # if run_name:
-    #     wandb.run.name = run_name# + "(" + wandb.run.name + ")"
+    wandb.init(project=project, entity='ai4sg', reinit=reinit, config=config)
+    wandb.run.name += ' [' + run_name + ']'
     return wandb.run.name
 
 

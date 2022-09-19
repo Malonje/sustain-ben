@@ -103,13 +103,12 @@ def get_model(model_name, input_shape=(7,7  ),**kwargs ):
     """
 
     model = None
-
     if model_name == 'unet3d':
         pretrained_model_path = kwargs.get('croptype_weights')
         num_bands = get_num_bands(kwargs)['all']
         print(pretrained_model_path)
         if pretrained_model_path is None:
-            model = make_UNet3D_model(n_class=NUM_CLASSES[kwargs.get('country')], n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
+            model = make_UNet3D_model(n_class=1, n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
         else:
             model = make_UNet3D_model_pretrained(n_class=NUM_CLASSES[kwargs.get('country')], n_channel=num_bands, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'))
             pretrained_dict = torch.load(pretrained_model_path)
@@ -125,6 +124,7 @@ def get_model(model_name, input_shape=(7,7  ),**kwargs ):
                                       timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'), input_s=input_shape[0])
     elif model_name == 'unet-fc-yield':
         num_bands = get_num_bands(kwargs)['all']
+        print(num_bands)
         model = YieldEstimation(num_bands, 1, timesteps=kwargs.get('num_timesteps'), dropout=kwargs.get('dropout'), input_s=input_shape[0])
         model = model.cuda()
 
@@ -139,12 +139,12 @@ class DateExtractor(nn.Module):
     def __init__(self, in_channel, n_classes, timesteps, dropout, input_s):
         super(DateExtractor, self).__init__()
 
-        feats = 16
+        feats = in_channel
         self.en3 = conv_block(in_channel, feats*4, feats*4)
         self.en4 = conv_block(feats*4, feats*8, feats*8)
         self.center_in = center_in(feats*8, feats*16)
-        self.features = nn.Linear(feats*16*input_s*input_s, feats*16)
-        self.date_predictions = nn.Linear(feats*16, n_classes)
+        self.features = nn.Linear(feats*16*input_s*input_s*timesteps, feats*16)
+        self.date_predictions = nn.Linear(feats*16, timesteps)
 
         self.logsoftmax = nn.LogSoftmax(dim=1)
         self.dropout = nn.Dropout(p=dropout, inplace=True)
@@ -159,7 +159,7 @@ class DateExtractor(nn.Module):
         center_in = center_in.permute(0, 2, 1, 3, 4)
         # print("center in sh", center_in.shape)
         shape = center_in.shape
-        center_in = center_in.reshape(-1, np.prod(center_in.shape[2:]))
+        center_in = center_in.reshape(-1, np.prod(center_in.shape[1:]))
         # shape T X (BXHXW)
         # print("center in sh", center_in.shape)
         center_in = self.dropout(center_in)

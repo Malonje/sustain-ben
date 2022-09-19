@@ -124,7 +124,7 @@ class CauveryDataset(SustainBenchDataset):
     def __init__(self, version=None, root_dir='data', download=False, split_scheme='cauvery',
                  resize_planet=False, calculate_bands=True, normalize=True, task="date_prediction",
                  l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9],
-                 ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32), date_pred_for='sowing'):
+                 ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32), date_pred_for=None, use_actual_season=False):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
@@ -137,6 +137,7 @@ class CauveryDataset(SustainBenchDataset):
         self.ps_bands = ps_bands
         self.truth_mask = truth_mask
         self.img_dim = img_dim
+        self.use_actual_season = use_actual_season
 
         if calculate_bands:
             self.l8_bands.extend([-2, -1])
@@ -171,16 +172,17 @@ class CauveryDataset(SustainBenchDataset):
         x = self.get_input(idx)
         y = self.get_label(idx)
         metadata = None #self.get_metadata(idx)
-        transplanting = int(self.y_array[idx][3].item()) - 1 if self.y_array[idx][3].item() > 0 else 0
-        harvesting = int(self.y_array[idx][4].item()) - 1
-        x['s1'][:, :, :, :transplanting] = torch.zeros_like(x['s1'][:, :, :, :transplanting])
-        x['s2'][:, :, :, :transplanting] = torch.zeros_like(x['s2'][:, :, :, :transplanting])
-        x['l8'][:, :, :, :transplanting] = torch.zeros_like(x['l8'][:, :, :, :transplanting])
-        x['planet'][:, :, :, :transplanting] = torch.zeros_like(x['planet'][:, :, :, :transplanting])
-        x['s1'][:, :, :, harvesting+1:] = torch.zeros_like(x['s1'][:, :, :, harvesting+1:])
-        x['s2'][:, :, :, harvesting+1:] = torch.zeros_like(x['s2'][:, :, :, harvesting+1:])
-        x['l8'][:, :, :, harvesting+1:] = torch.zeros_like(x['l8'][:, :, :, harvesting+1:])
-        x['planet'][:, :, :, harvesting+1:] = torch.zeros_like(x['planet'][:, :, :, harvesting+1:])
+        if self.task == "yield" and self.use_actual_season is True:
+            sowing = int(self.y_array[idx][2].item()) - 1 if self.y_array[idx][2].item() > 0 else 0
+            harvesting = int(self.y_array[idx][4].item()) - 1
+            x['s1'][:, :, :, :sowing] = torch.zeros_like(x['s1'][:, :, :, :sowing])
+            x['s2'][:, :, :, :sowing] = torch.zeros_like(x['s2'][:, :, :, :sowing])
+            x['l8'][:, :, :, :sowing] = torch.zeros_like(x['l8'][:, :, :, :sowing])
+            x['planet'][:, :, :, :sowing] = torch.zeros_like(x['planet'][:, :, :, :sowing])
+            x['s1'][:, :, :, harvesting+1:] = torch.zeros_like(x['s1'][:, :, :, harvesting+1:])
+            x['s2'][:, :, :, harvesting+1:] = torch.zeros_like(x['s2'][:, :, :, harvesting+1:])
+            x['l8'][:, :, :, harvesting+1:] = torch.zeros_like(x['l8'][:, :, :, harvesting+1:])
+            x['planet'][:, :, :, harvesting+1:] = torch.zeros_like(x['planet'][:, :, :, harvesting+1:])
         return x, y, metadata
 
     def get_input(self, idx):
@@ -213,19 +215,19 @@ class CauveryDataset(SustainBenchDataset):
 
         # cropped = img[ : , : , x_min:x_max+1, y_min:y_max+1]
         # print(s1.shape, s2.shape)
-        s1 = (mask * s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
-        s2 = (mask * s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        s1 = (s1.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        s2 = (s2.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
         coords = np.argwhere(mask_l8 == plot_id)
         if len(coords) == 0:
             l8 = np.zeros((l8.shape[3], l8.shape[0], s2.shape[2], s2.shape[3]))
         else:
             x_min, y_min = np.min(coords, axis=0)
             x_max, y_max = np.max(coords, axis=0)
-            l8 = (mask_l8 * l8.transpose(3, 0, 1, 2))[:, :, x_min:x_max + 1, y_min:y_max + 1]
+            l8 = (l8.transpose(3, 0, 1, 2))[:, :, x_min:x_max + 1, y_min:y_max + 1]
         coords = np.argwhere(mask_ps==plot_id)
         x_min, y_min = np.min(coords,axis=0)
         x_max, y_max = np.max(coords,axis=0)
-        planet = (mask_ps * planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
+        planet = (planet.transpose(3,0,1,2))[ : , : , x_min:x_max+1, y_min:y_max+1]
 
 
         if l8.shape[2] == 0 or l8.shape[3] == 0:
@@ -320,12 +322,15 @@ class CauveryDataset(SustainBenchDataset):
         """
         if self.task == "yield":
             return torch.Tensor([self.y_array[idx][-1].item()])#.type(torch.LongTensor)
-        if self.date_pred_for=='sowing':
+        elif self.date_pred_for=='sowing':
             dpf = self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0
-        if self.date_pred_for=='transplanting':
+        elif self.date_pred_for=='transplanting':
             dpf = self.y_array[idx][3].item() - 1
-        if self.date_pred_for=='harvesting':
+        elif self.date_pred_for=='harvesting':
             dpf = self.y_array[idx][4].item() - 1
+        elif self.date_pred_for == 'unified':
+            return torch.Tensor([self.y_array[idx][2].item() - 1 if self.y_array[idx][2].item() > 0 else 0,
+                                 self.y_array[idx][4].item() - 1]).type(torch.LongTensor)
         # transplanting = self.y_array[idx][3].item() - 1
         # harvesting = self.y_array[idx][4].item() - 1
         # y = torch.Tensor([sowing, transplanting, harvesting]).type(torch.LongTensor)

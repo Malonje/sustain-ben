@@ -12,8 +12,9 @@ NON_DL_MODELS = ['logreg', 'random_forest']
 DL_MODELS = ['bidir_clstm', 'fcn', 'unet', 'fcn_crnn', 'mi_clstm', 'unet3d', 'only_clstm_mi', 'unet-fc', 'unet-fc-yield']
 MULTI_RES_MODELS = ['fcn_crnn']
 
-S1_NUM_BANDS = 3
 L8_NUM_BANDS = 8
+S1_NUM_BANDS = 3
+S2_NUM_BANDS = 10
 PLANET_NUM_BANDS = 4
 
 LABEL_DIR = "raster_npy"
@@ -162,7 +163,7 @@ STDS = {'l8': {'cauvery': np.array([ 9900.16857204, 9776.42869284, 9109.375738, 
             'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
 # OTHER PER COUNTRY CONSTANTS
-NUM_CLASSES = {'cauvery': 3,
+NUM_CLASSES = {'cauvery': 2,
               'ghana': 4,
                'southsudan': 4,
                'tanzania': 5,

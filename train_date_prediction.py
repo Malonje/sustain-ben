@@ -100,7 +100,18 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
-    run_name = logger.init(project='date_prediction', reinit=True)
+    config = {
+        'optimizer': args.optimizer,
+        'lr': args.lr,
+        'weight_decay': args.weight_decay,
+        'batch_size': args.batch_size,
+        'use_l8': args.use_l8,
+        'use_s1': args.use_s1,
+        'use_s2': args.use_s2,
+        'use_planet': args.use_planet,
+        'use_actual_season': args.use_actual_season
+    }
+    run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:
@@ -187,7 +198,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     # inputs = inputs.cuda()
-
+                    print(inputs.shape)
                     preds = model(inputs)
                     # print(preds.shape, targets.shape)
                     loss = torch.sum(loss_fn(preds, targets))
@@ -314,6 +325,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                             temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
 
                     inputs = temp_inputs
+
                     # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['l8']), dim=1)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()

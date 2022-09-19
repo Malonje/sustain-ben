@@ -104,8 +104,18 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
-    # splits = ['train', 'val'] if not args.eval_on_test else ['test']
-    run_name = logger.init(project='crop_yield_v2', reinit=True)
+    config = {
+        'optimizer': args.optimizer,
+        'lr': args.lr,
+        'weight_decay': args.weight_decay,
+        'batch_size': args.batch_size,
+        'use_l8': args.use_l8,
+        'use_s1': args.use_s1,
+        'use_s2': args.use_s2,
+        'use_planet': args.use_planet,
+        'use_actual_season': args.use_actual_season
+    }
+    run_name = logger.init(project='crop_yield_v3', reinit=True, run_name=args.run_name, config=config)
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"
@@ -370,7 +380,7 @@ def main(args):
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
                           normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, task="yield",
                           l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands,
-                          truth_mask=truth_mask, img_dim=img_dimension)
+                          truth_mask=truth_mask, img_dim=img_dimension, use_actual_season=args.use_actual_season)
 
     dataloaders = dataset
 

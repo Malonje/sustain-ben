@@ -221,101 +221,98 @@ class CropTypeMappingDataset(SustainBenchDataset):
         for t in range(temp.shape[-1]):
             if np.any(temp[:, :, :, t]):
                 l8.append(temp[:, :, :, t])
-        temp = images['planet'].astype(np.int64)
-        planet = []
-        for t in range(temp.shape[-1]):
-            if np.any(temp[:, :, :, t]):
-                planet.append(temp[:, :, :, t])
+        #temp = images['planet'].astype(np.int64)
+        #planet = []
+        #for t in range(temp.shape[-1]):
+        #    if np.any(temp[:, :, :, t]):
+        #        planet.append(temp[:, :, :, t])
 
         s1 = np.asarray(s1)
         s2 = np.asarray(s2)
         l8 = np.asarray(l8)
-        planet = np.asarray(planet)
-        
+        #planet = np.asarray(planet)
+
         s1 = torch.from_numpy(s1).permute(1, 0, 2, 3)
         s2 = torch.from_numpy(s2).permute(1, 0, 2, 3)
         l8 = torch.from_numpy(l8).permute(1, 0, 2, 3)
-        try:
-            planet = torch.from_numpy(planet).permute(1, 0, 2, 3)
-        except:
-            planet = torch.zeros((4, 184, 108, 108))
+        # try:
+        #    planet = torch.from_numpy(planet).permute(1, 0, 2, 3)
+        # except:
+        #    planet = torch.zeros((4, 184, 108, 108))  
 
         if self.resize_planet:
-            s1 = s1.permute(3, 0, 1, 2)
-            s1 = transforms.Resize(self.img_dim)(s1)
+            s1 = transforms.Resize(self.img_dim, interpolation=transforms.InterpolationMode.NEAREST)(s1)
             s1 = s1[:, :, None, :,:]
             # s1= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(s1)
             s1=torch.squeeze(s1, 2)
-            s1 = s1.permute(1, 2, 3, 0)
-            s2 = s2.permute(3, 0, 1, 2)
-            s2 = transforms.Resize(self.img_dim)(s2)
+            s1 = s1.permute(0, 2, 3, 1)
+            # s2 = s2.permute(3, 0, 1, 2)
+            s2 = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(s2)
             s2 = s2[:, :, None, :,:]
-            # s2= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(s2)
+            s2= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(s2)
             s2=torch.squeeze(s2, 2)
-            s2 = s2.permute(1, 2, 3, 0)
-            l8 = l8.permute(3, 0, 1, 2)
-            l8 = transforms.Resize(self.img_dim)(l8)
+            s2 = s2.permute(0, 2, 3, 1)
+            # l8 = l8.permute(3, 0, 1, 2)
+            l8 = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(l8)
             l8 = l8[:, :, None, :,:]
-            # l8= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(l8)
+            l8= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(l8)
             l8=torch.squeeze(l8, 2)
-            l8 = l8.permute(1, 2, 3, 0)  ## torch.Size([8, 12, 12, 11])
-            planet = planet.permute(3, 0, 1, 2)
-            planet = transforms.Resize(self.img_dim)(planet)
-            planet = planet[:, :, None, :,:]
-            # planet= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(planet)
-            planet=torch.squeeze(planet, 2)
-            planet = planet.permute(1, 2, 3, 0)
+            l8 = l8.permute(0, 2, 3, 1)
+            # planet = planet.permute(3, 0, 1, 2)
+            # planet = transforms.Resize(self.img_dim)(planet)
+            # planet = planet[:, :, None, :,:]
+            # # planet= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(planet)
+            # planet=torch.squeeze(planet, 2)
+            # planet = planet.permute(1, 2, 3, 0)
         else:
-            s1 = s1.permute(3, 0, 1, 2)
             s1 = transforms.CenterCrop(PLANET_DIM)(s1)
-            s1 = s1.permute(1, 2, 3, 0)
-            s2 = s2.permute(3, 0, 1, 2)
+            s1 = s1.permute(0, 2, 3, 1)
             s2 = transforms.CenterCrop(PLANET_DIM)(s2)
-            s2 = s2.permute(1, 2, 3, 0)
-            l8 = l8.permute(3, 0, 1, 2)
+            s2 = s2.permute(0, 2, 3, 1)
             l8 = transforms.CenterCrop(PLANET_DIM)(l8)
-            l8 = l8.permute(1, 2, 3, 0)
-            planet = planet.permute(3, 0, 1, 2)
-            planet = transforms.CenterCrop(PLANET_DIM)(planet)
-            planet = planet.permute(1, 2, 3, 0)
-        #print('chck_now:',l8.shape)
+            l8 = l8.permute(0, 2, 3, 1)
+            #planet = transforms.CenterCrop(PLANET_DIM)(planet)
+            #planet = planet.permute(0, 2, 3, 1)
+
         # Include NDVI and GCVI for s2 and planet, calculate before normalization and numband selection
         if self.calculate_bands:
             ndvi_s2 = (s2[BANDS['s2']['10']['NIR']] - s2[BANDS['s2']['10']['RED']]) / (
                         s2[BANDS['s2']['10']['NIR']] + s2[BANDS['s2']['10']['RED']])
             ndvi_l8 = (l8[BANDS['l8']['8']['NIR']] - l8[BANDS['l8']['8']['RED']]) / (
                         l8[BANDS['l8']['8']['NIR']] + l8[BANDS['l8']['8']['RED']])
-            ndvi_planet = (planet[BANDS['planet']['4']['NIR']] - planet[BANDS['planet']['4']['RED']]) / (
-                        planet[BANDS['planet']['4']['NIR']] + planet[BANDS['planet']['4']['RED']])
+            #ndvi_planet = (planet[BANDS['planet']['4']['NIR']] - planet[BANDS['planet']['4']['RED']]) / (
+            #            planet[BANDS['planet']['4']['NIR']] + planet[BANDS['planet']['4']['RED']])
 
             gcvi_s2 = (s2[BANDS['s2']['10']['NIR']] / s2[BANDS['s2']['10']['GREEN']]) - 1
             gcvi_l8 = (l8[BANDS['l8']['8']['NIR']] / l8[BANDS['l8']['8']['GREEN']]) - 1
-            gcvi_planet = (planet[BANDS['planet']['4']['NIR']]/planet[BANDS['planet']['4']['GREEN']]) - 1
+            #gcvi_planet = (planet[BANDS['planet']['4']['NIR']]/planet[BANDS['planet']['4']['GREEN']]) - 1
             ## added this to remove nans
             ndvi_s2[(s2[BANDS['s2']['10']['NIR'], :, :, :] + s2[BANDS['s2']['10']['RED'], :, :, :]) == 0] = 0
             gcvi_s2[s2[BANDS['s2']['10']['GREEN'], :, :, :] == 0] = 0
             ndvi_l8[
                 (l8[BANDS['l8']['8']['NIR'], :, :, :] + l8[BANDS['l8']['8']['RED'], :, :, :]) == 0] = 0
             gcvi_l8[l8[BANDS['l8']['8']['GREEN'], :, :, :] == 0] = 0
-            ndvi_planet[(planet[BANDS['planet']['4']['NIR'], :, :, :] + planet[BANDS['planet']['4']['RED'], :, :, :]) == 0] = 0
-            gcvi_planet[planet[BANDS['planet']['4']['GREEN'], :, :, :] == 0] = 0
-        #print('bedore normal:',l8.shape)
+            #ndvi_planet[(planet[BANDS['planet']['4']['NIR'], :, :, :] + planet[BANDS['planet']['4']['RED'], :, :, :]) == 0] = 0
+            #gcvi_planet[planet[BANDS['planet']['4']['GREEN'], :, :, :] == 0] = 0
+
         if self.normalize:
             s1 = self.normalization(s1, 's1')
             s2 = self.normalization(s2, 's2')
             l8 = self.normalization(l8, 'l8')
-            planet = self.normalization(planet, 'planet')
+            #planet = self.normalization(planet, 'planet')
+
         # Concatenate calculated bands
         if self.calculate_bands:
             s2 = torch.cat((s2, torch.unsqueeze(ndvi_s2, 0), torch.unsqueeze(gcvi_s2, 0)), 0)
-            planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
+            #planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
             l8 = torch.cat((l8, torch.unsqueeze(ndvi_l8, 0), torch.unsqueeze(gcvi_l8, 0)), 0)
         #print('before pad:', l8.shape)
         s1 = self.pad(s1)
         s2 = self.pad(s2)
         l8 = self.pad(l8)
-        planet = self.pad(planet)
-        #print('after_pad:', l8.shape)
+
+        #planet = self.pad(planet)
+
         if self._split_scheme in ['official', 'ghana', 'southsudan']:
             ## add code to get 32X32 from 64X64 using indexes
             grid_id = self.grid_id[idx].item()
@@ -326,7 +323,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             elif (grid_id == 2):
                 return {'s1': s1[:, 0:32, 32:64, :], 's2': s2[:, 0:32, 32:64, :],'l8': l8[:, 0:32, 32:64, :], 'planet': planet[:, 0:32, 32:64, :]}
             return {'s1': s1[:, 32:64, 32:64, :], 's2': s2[:, 32:64, 32:64, :],'l8': l8[:, 32:64, 32:64, :], 'planet': planet[:, 32:64, 32:64, :]}
-        return {'s1': s1[self.s1_bands], 's2': s2[self.s2_bands], 'l8': l8[self.l8_bands], 'planet': planet[self.ps_bands]}
+        return {'s1': s1[self.s1_bands], 's2': s2[self.s2_bands], 'l8': l8[self.l8_bands], 'planet': l8[self.ps_bands]}
 
     def get_label(self, idx):
         """
@@ -348,7 +345,8 @@ class CropTypeMappingDataset(SustainBenchDataset):
         else:
             label = np.load(os.path.join(self.data_dir, self.country, f'truth@{self.truth_mask}m', f'{self.country}_{loc_id}.npz'))
             label = torch.from_numpy(np.expand_dims(label['crop_type'], 0))
-            label = transforms.Resize(self.img_dim)(label)[0]
+            label = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(label)[0].to(torch.int)
+
         return label
 
     def get_dates(self, json_file):
@@ -391,7 +389,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         # planet = self.pad(planet)
         s1 = self.pad_m(s1)
         s2 = self.pad_m(s2)
-        planet = self.pad_m(planet)
+        # planet = self.pad_m(planet)
         l8 = self.pad_m(l8)
         return {'s1': s1, 's2': s2, 'l8': l8, 'planet': planet}
 
@@ -403,6 +401,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         Returns:
           grid - (tensor) a normalized version of the input grid
         """
+        #print(grid.shape)
         num_bands = grid.shape[0]
         means = MEANS[satellite][self.country]
         stds = STDS[satellite][self.country]

@@ -55,7 +55,7 @@ class UNet3D(nn.Module):
         self.dc3 = conv_block(feats*8, feats*4, feats*2)
         self.final = nn.Conv3d(feats*2, n_classes, kernel_size=3, stride=1, padding=1)    
         self.fn = nn.Linear(timesteps, 1)
-        self.logsoftmax = nn.LogSoftmax(dim=1)
+        self.logsoftmax = nn.Sigmoid()
         self.dropout = nn.Dropout(p=dropout, inplace=True)
         
     def forward(self, x):
