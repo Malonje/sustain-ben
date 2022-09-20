@@ -7,12 +7,15 @@ import torch
 # import datasets
 import metrics
 import util_deploy
-# from osgeo import gdal
-# import rioxarray as rxr
+import os
+# import rasterio
+import numpy as np
+import torch
+import torch.nn.functional as F
 import numpy as np
 import pickle
 from sustainbench import logger
-
+import matplotlib.pyplot as plt
 from torch import autograd
 
 from constants import *
@@ -31,7 +34,7 @@ import torch.nn.functional as F
 
 import PIL
 from PIL import Image
-import util
+# import util
 MEANS_ = {'l8': {'cauvery': np.array([12568.23693711, 12884.11980095, 13913.08572643, 13744.98251397,
                                      19348.8538171,  14400.93252211, 12137.75946084, 32752.88348736]
                                     )},
@@ -149,14 +152,68 @@ STDS = {'l8': {'cauvery': np.array([ 9900.16857204, 9776.42869284, 9109.375738, 
                 [548.64, 547.45, 660.28, 677.55, 896.28, 1066.91, 1006.01, 1173.19, 1167.74, 865.42]),
             'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
-def get_input_others(images, img_dim, l8_bands, s2_bands, s1_bands, ps_bands,calculate_bands):
+def find_idx(file_name, start_date):
+    edate = file_name.split('_')[1]
+    edate = dt.datetime.strptime(edate, "%Y%m%d").date()
+    sdate = dt.datetime.strptime(start_date, "%Y%m%d").date()
+    return (edate.date() - sdate.date()).days
 
+
+def makedataset(PATH, strt_date):
+    pix={
+            'S1': 32,
+            'S2': 32,
+            'L8': 11,
+            'PS': 107,}
+    bands={
+            'S1': 3,
+            'S2': 10,
+            'L8': 8,
+            'PS': 4,}
+
+    Sattelites=["S1", "S2", "L8"]
+    fans=[]
+    for s in Sattelites:
+        path_to_sat=PATH+"/"+s
+        all_file=os.listdir(path_to_sat)
+        ans_array = torch.zeros(184, bands[s], pix[s], pix[s])
+        max_h,max_w=0,0
+        for f in all_file:
+            src = rasterio.open(all_file+"/"+f)
+            n_val=src.read()
+            max_h=max(max_h, n_val.shape[1])
+            max_w=max(max_w, n_val.shape[2])
+        for f in all_file:
+            idx=find_idx(f,strt_date)
+            src = rasterio.open(all_file+"/"+f)
+            n_val=src.read()
+            n_val=torch.from_numpy(n_val)
+            # padd/crop to store
+            pad=(max_w-n_val.shape[2],0,max_h-n_val.shape[1],0)
+            n_pad = F.pad(n_val, pad, "constant", 0)
+            ans_array[idx]=n_pad
+
+        fans.append(ans_array)
+    return fans
+
+
+
+
+def get_input_others(images, img_dim, l8_bands, s2_bands, s1_bands, ps_bands, calculate_bands):
+
+    l8_bands_=l8_bands.copy()
+    s1_bands_=s1_bands.copy()
+    s2_bands_=s2_bands.copy()
+    ps_bands_=ps_bands.copy()
     resize_planet=True
     if calculate_bands:
-        l8_bands.extend([-2, -1])
-        s1_bands = s1_bands
-        s2_bands.extend([-2, -1])
-        ps_bands.extend([-2, -1])
+        l8_bands_.extend([-2, -1])
+        s1_bands_ = s1_bands_
+        s2_bands_.extend([-2, -1])
+        ps_bands_.extend([-2, -1])
+
+
+
     s1 = images['s1'].astype(np.int64)
     s2 = images['s2'].astype(np.int64)
     planet = images['planet'].astype(np.int64)
@@ -276,7 +333,7 @@ def get_input_others(images, img_dim, l8_bands, s2_bands, s1_bands, ps_bands,cal
     # s1 = self.pad(s1)
     # s2 = self.pad(s2)
     # planet = self.pad(planet)
-    return {'s1': s1[s1_bands], 's2': s2[s2_bands], 'l8': l8[l8_bands], 'planet': planet[ps_bands]}
+    return {'s1': s1[s1_bands_], 's2': s2[s2_bands_], 'l8': l8[l8_bands_], 'planet': planet[ps_bands_]}
 
 
 def get_input_croptype(images, img_dim, l8_bands, s2_bands, s1_bands, ps_bands,calculate_bands):
@@ -431,7 +488,7 @@ def create_patch(t,s):
         psh=0
     if(t.shape[2]%s == 0):
         psw=0
-    pad=(0,0,psh,0,psw,0)
+    pad=(0,0,psw,0,psh,0)
     t_pad = F.pad(t, pad, "constant", 0)  # padding the tensor
     oshapes=t_pad.shape
     # print(oshapes)
@@ -564,10 +621,26 @@ def cropout(t,inp,s):  # pass output from model of shape(Nxsxs) with the origina
 # #     return model
 def norm_plot(a):
     row_sums = a.sum(axis=1)
-    new_matrix = a / row_sums[:, numpy.newaxis]
-    return a
+    new_matrix = a / row_sums[:, np.newaxis]
+    return new_matrix
+def norm_max(a):
+    return np.true_divide(a,np.amax(a))
+def plot_arr(H):
 
+    fig = plt.figure(figsize=(6, 3.2))
 
+    ax = fig.add_subplot(111)
+    ax.set_title('colorMap')
+    plt.imshow(H)
+    ax.set_aspect('equal')
+
+    cax = fig.add_axes([0.12, 0.1, 0.78, 0.8])
+    cax.get_xaxis().set_visible(False)
+    cax.get_yaxis().set_visible(False)
+    cax.patch.set_alpha(0)
+    cax.set_frame_on(False)
+    plt.colorbar(orientation='vertical')
+    plt.show()
 def make_input_patch(img,i,j,crop_to_dim):
 
     #shape of img is bxhxwxt
@@ -596,6 +669,8 @@ def make_input_patch(img,i,j,crop_to_dim):
     return input_
 
 def concat_satellite(inputs, use_s1, use_s2,use_l8,use_planet):
+    # print('l8',inputs['l8'].shape)
+    # print('s2',inputs['s2'].shape)
     temp_inputs = None
     if use_s1:
         temp_inputs = inputs['s1']
@@ -603,53 +678,80 @@ def concat_satellite(inputs, use_s1, use_s2,use_l8,use_planet):
         if temp_inputs is None:
             temp_inputs = inputs['s2']
         else:
-            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=1)
+            temp_inputs = torch.cat((temp_inputs, inputs['s2']), dim=0)
     if use_l8:
         if temp_inputs is None:
             temp_inputs = inputs['l8']
         else:
-            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=1)
+            temp_inputs = torch.cat((temp_inputs, inputs['l8']), dim=0)
     if use_planet:
         if temp_inputs is None:
             temp_inputs = inputs['planet']
         else:
-            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
-
+            temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=0)
+    # print(temp_inputs.shape)
     return(temp_inputs)
 
+def metrics(y_true, y_pred):
+    # y_pred = y_pred.argmax(axis=1)
+    y_true = y_true.astype('int')
+    y_pred = y_pred.astype('int')
+    y_true = y_true.flatten()
+    y_pred = y_pred.flatten()
+    assert (y_true.shape == y_pred.shape)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    f1 = f1_score(y_true, y_pred, average='macro')
+    acc = []
+    for t, p in zip(y_true, y_pred):
+        if np.abs(t - p) <= 7:
+            acc.append(1)
+        else:
+            acc.append(0)
+    acc = sum(acc)/len(acc)
+    # acc = accuracy_score(y_true, y_pred)
+    # print('Macro Dice/ F1 score:', f1)
+    # print('RMSE:', rmse)
+    # print('Accuracy score:', acc)
+    return f1, rmse, acc
+def get_model_input(im,i,j, dim):
+    input = make_input_patch(im, i ,j , dim)
+    #convert input to batch size 1
+    input = torch.tensor(input)
+    input = input[None, :, : , :, :]
+    inputs = input.permute(0, 1, 4, 2, 3)
+    return inputs
 
-
-def main(args):
-
+def get_bands(l8_band, s1_band, s2_band, ps_band):
     l8_bands = [0,1,2,3,4,5,6,7]
     s1_bands = [0,1,2]
     s2_bands = [0,1,2,3,4,5,6,7,8,9]
     ps_bands = [0,1,2,3]
-    if args.l8_bands is not None:
-        l8_bands=args.l8_bands[1:-1]
+    if l8_band is not None:
+        l8_bands=l8_band[1:-1]
         l8_bands=l8_bands.split(',')
         l8_bands=[int(x) for x in l8_bands]
-    if args.s1_bands is not None:
-        s1_bands=args.s1_bands[1:-1]
+    if s1_band is not None:
+        s1_bands=s1_band[1:-1]
         s1_bands=s1_bands.split(',')
         s1_bands=[int(x) for x in s1_bands]
-    if args.s2_bands is not None:
-        s2_bands=args.s2_bands[1:-1]
+    if s2_band is not None:
+        s2_bands=s2_band[1:-1]
         s2_bands=s2_bands.split(',')
         s2_bands=[int(x) for x in s2_bands]
-    if args.ps_bands is not None:
-        ps_bands=args.ps_bands[1:-1]
+    if ps_band is not None:
+        ps_bands=ps_band[1:-1]
         ps_bands=ps_bands.split(',')
         ps_bands=[int(x) for x in ps_bands]
-
+    return l8_bands, s1_bands, s2_bands, ps_bands
+def get_dim(use_s1, use_s2, use_l8, use_planet):
     sat_names = ""
-    if args.use_s1:
+    if use_s1:
         sat_names += "S1"
-    if args.use_s2:
+    if use_s2:
         sat_names += "S2"
-    if args.use_l8:
+    if use_l8:
         sat_names += "L8"
-    if args.use_planet:
+    if use_planet:
         sat_names += "planet"
     img_dimension = (7,7)
     crop_typ_dim = (32,32)
@@ -660,90 +762,300 @@ def main(args):
         img_dimension = (3,3)
         crop_typ_dim = (12,12)
 
-    path = '/home/parichya/Documents/cauvery/npy/'
-    img_ = np.load(path+'cauvery_002225.npz')
+    return img_dimension, crop_typ_dim
 
-    X = get_input_croptype(img_, crop_typ_dim, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
-    X = concat_satellite(X, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
-    Y=torch.zeros((5,X.shape[1],X.shape[2]))
-    # print('X shape:', X.shape)
-    out = create_patch(X,crop_typ_dim)
-    # print('out shape:', out.shape)
-    out = out.permute(0, 1, 4, 2, 3)
-    model = croptype_models.get_model( **vars(args))
-    if args.model_name in DL_MODELS:
-        print('Total trainable model parameters: {}'.format(
-            sum(p.numel() for p in model.parameters() if p.requires_grad)))
-    model.load_state_dict(torch.load('/home/parichya/Downloads/chocolate-jazz-20 [S2(RE1)].pth.tar'))
-    model=model.cuda()
-    res = model(out.cuda().float())
-    res = torch.argmax(res, dim=1)
-    res = torch.where(res==0,1,0)
+def main(args):
 
-    cover_crop_type = cropout(res , X, crop_typ_dim)
-    Y[0] = cover_crop_type
+    l8_bands, s1_bands, s2_bands, ps_bands = get_bands(args.l8_bands, args.s1_bands, args.s2_bands, args.ps_bands)
+    img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
 
-    num_pixels = torch.where(Y[0] == 1)
+
+
+    # # PATH=input("Enter path to region")
+    # # SEASON=input("Enter season")
+    # # YEAR=input("Enter year")
+
+    # PATH="get path from user"
+    # SEASON="01"
+    # YEAR=2020
+    # strt_date='01-'+SEASON+'-'+YEAR
+    # img_ = makedataset(PATH, strt_date)
+    uids=[
+          2139,2144,2145,2146,2162,2163,2164,2165,2168,2169,2201,2202,2203,2204,2261,2268,2269,2270,2271,
+            2299,2057,2058,2059,2060,2061,2062,2063,2075,2076,2089,2093,2090,2091,2092,2110,2111,2122,2123]
+    #Load model croptype
+    args.l8_bands = None
+    args.ps_bands = None
+    args.s1_bands = None
+    args.s2_bands='[0,1,2,3,4,5,6,7,8,9]'
+    model_crp = croptype_models.get_model( **vars(args))
+    model_crp.load_state_dict(torch.load('/home/parichya/Documents/model_weights/blooming-sky-345 [S2(All)].pth.tar'))
+    model_crp=model_crp.cuda()
+    #Load model sow
+    args.model_name = 'unet-fc'
     args.num_timesteps=184
-    X_ = get_input_others(img_, img_dimension, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
-    X_ = concat_satellite(X_, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
-    # print('X_ shape:',X_.shape)
 
-    for k in range(len(num_pixels[0])):
-        i = int(num_pixels[0][k])
-        j = int(num_pixels[1][k])
-        input = make_input_patch(X_, i ,j , img_dimension[0])
-        #convert input to batch size 1
-        input = torch.tensor(input)
-        input = input[None, :, : , :, :]
-        inputs = input.permute(0, 1, 4, 2, 3)
+    args.use_s2 = True
+    args.use_s1 = False
+    args.use_planet = False
+    args.use_l8 = True
+    args.s2_bands = '[0,1,2,3,4,5,6,7,8,9]'
+    args.l8_bands = '[0]'
+    img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+    model_sow = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+    model_sow.load_state_dict(torch.load('/home/parichya/Documents/model_weights/sowing_date_prediction.pth.tar'))
 
-        #SOWING
-        args.model_name = 'unet-fc'
-        args.num_timesteps=184
-        model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
-        if args.model_name in DL_MODELS:
-            print('Total trainable model parameters: {}'.format(
-                sum(p.numel() for p in model.parameters() if p.requires_grad)))
-        model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(decent-cosmos-8 [S2-Sow(RE1)]).pth.tar'))
-        preds = model(inputs.cuda().float())
-        Y[1][i][j] = torch.argmax(preds, dim=1)
+    #Load model transplant
+    args.num_timesteps=184
+    args.use_s2 = False
+    args.use_s1 = False
+    args.use_planet = False
+    args.use_l8 = True
+    args.l8_bands = '[0,1,2,3,4,5,6]'
+    args.model_name = 'unet-fc'
+    img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+    model_trans = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+    model_trans.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(ethereal-grass-12 [L8-Trans(All Spectral)]).pth.tar'))
 
-        #Transplantig
-        model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
-        if args.model_name in DL_MODELS:
-            print('Total trainable model parameters: {}'.format(
-                sum(p.numel() for p in model.parameters() if p.requires_grad)))
-        model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(ethereal-field-14 [S2-Trans(RE1)]).pth.tar'))
-        preds = model(inputs.cuda().float())
-        Y[2][i][j] = torch.argmax(preds, dim=1)
+    #Load model harvest
+    args.use_s2 = False
+    args.use_s1 = True
+    args.use_planet = False
+    args.use_l8 = False
+    args.num_timesteps=184
+    args.model_name = 'unet-fc'
+    args.s1_bands = '[0]'
+    img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+    model_harv = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+    model_harv.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(wise-forest-21 [S1-Harvest(VV)]).pth.tar'))
 
-        #Harvesting
-        model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
-        if args.model_name in DL_MODELS:
-            print('Total trainable model parameters: {}'.format(
-                sum(p.numel() for p in model.parameters() if p.requires_grad)))
-        model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(iconic-smoke-11 [S2-Harvest(RE1)]).pth.tar'))
-        preds = model(inputs.cuda().float())
-        Y[3][i][j] = torch.argmax(preds, dim=1)
+    #Load model yield
+    args.use_s2 = True
+    args.use_s1 = False
+    args.use_planet = False
+    args.use_l8 = True
 
-        #YIELD
-        # args.model_name = 'unet-fc-yield'
-        # model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+    args.l8_bands = '[0]'
+    args.s2_bands = '[0,1,2,3,4,5,6,7,8,9]'
+    args.model_name = 'unet-fc-yield'
+    img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+    model_yield = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+    model_yield.load_state_dict(torch.load('/home/parichya/Documents/model_weights/crop_yield [Fusion(L8-UB,S2-All)].pth.tar'))
+
+    for uid in uids:
+        args.use_l8=False
+        args.use_s1=False
+        args.use_planet=False
+        args.use_s2=True
+
+        args.l8_bands = None
+        args.ps_bands = None
+        args.s1_bands = None
+        args.s2_bands='[0,1,2,3,4,5,6,7,8,9]'
+        args.num_timesteps=40
+
+        print(uid)
+        path = '/home/parichya/Documents/cauvery/npy/'
+        img_ = np.load(path+'cauvery_00'+str(uid)+'.npz')
+        truth = np.load('/home/parichya/Documents/cauvery/truth@10m/'+'cauvery_00'+str(uid)+'.npz')
+        l8_bands, s1_bands, s2_bands, ps_bands = get_bands(args.l8_bands, args.s1_bands, args.s2_bands, args.ps_bands)
+        img_dimension, crop_typ_dim = get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+        X = get_input_croptype(img_, crop_typ_dim, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
+        X = concat_satellite(X, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+
+        Y=np.zeros((5,X.shape[1],X.shape[2]))
+        # print('X shape:', X.shape)
+        out = create_patch(X,crop_typ_dim)
+        # print('out shape:', out.shape)
+        out = out.permute(0, 1, 4, 2, 3)
+        # model = croptype_models.get_model( **vars(args))
         # if args.model_name in DL_MODELS:
         #     print('Total trainable model parameters: {}'.format(
         #         sum(p.numel() for p in model.parameters() if p.requires_grad)))
-        # model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(decent-cosmos-8 [S2-Sow(RE1)]).pth.tar'))
-        # preds = model(inputs.cuda().float())
-        # Y[4][i][j] = torch.argmax(preds, dim=1)
+        # model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/blooming-sky-345 [S2(All)].pth.tar'))
 
-    print(Y[0])
-    print(Y[1])
-    print(Y[2])
-    print(Y[3])
-    # print(Y[4])
+        res = model_crp(out.cuda().float())
+        Y[0]=cropout(res[0][0][None,:,:], X, crop_typ_dim).detach().numpy()
+        # print(res[0][0][None,:,:])
+        res = torch.argmax(res, dim=1)
+        res = torch.where(res==0,1,0)
+        # res = res[0][0]
+        # res = res[None, :, : ]
+        # print(res.shape)
+
+        # cover_crop_type = cropout(res, X, crop_typ_dim)
+        cover_crop_type = res[0]
+        # res = res[0][0]
+        # res = res[None, :, : ]
+        # Y[0] = cropout(res , X, crop_typ_dim)
+        # print(cover_crop_type.shape)
+        # Y[0] = cover_crop_type
+
+        num_pixels = torch.where(cover_crop_type == 1)
+        args.num_timesteps=184
+        # X_ = get_input_others(img_, img_dimension, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
+        # X_ = concat_satellite(X_, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+        # print('X_ shape:',X_.shape)
+
+        for k in range(len(num_pixels[0])):
+            i = int(num_pixels[0][k])
+            j = int(num_pixels[1][k])
+            # sowing_actual = truth['sowing_dates'][i][j]
+            # harvesting_actual = truth['harvesting_dates'][i][j]
+            # input = make_input_patch(X_, i ,j , img_dimension[0])
+            # #convert input to batch size 1
+            # input = torch.tensor(input)
+            # input = input[None, :, : , :, :]
+            # inputs = input.permute(0, 1, 4, 2, 3)
+
+            #SOWING
+            args.model_name = 'unet-fc'
+            args.num_timesteps=184
+            args.use_s2 = True
+            args.use_s1 = False
+            args.use_planet = False
+            args.use_l8 = True
+
+            args.s2_bands = '[0,1,2,3,4,5,6,7,8,9]'
+            args.l8_bands = '[0]'
+
+            l8_bands, s1_bands, s2_bands, ps_bands = get_bands(args.l8_bands, args.s1_bands, args.s2_bands, args.ps_bands)
+            img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            X_ = get_input_others(img_, img_dimension, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
+            # print('before concat',X_.shape)
+            X_ = concat_satellite(X_, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            inputs = get_model_input(X_, i, j, img_dimension[0])
+
+            # model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+            # if args.model_name in DL_MODELS:
+            #     print('Total trainable model parameters: {}'.format(
+            #         sum(p.numel() for p in model.parameters() if p.requires_grad)))
+            # model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/sowing_date_prediction.pth.tar'))
+            preds = model_sow(inputs.cuda().float())
+            print('for swoing')
+
+            # print(preds.shape)
+
+            Y[1][i][j] = int(torch.argmin(preds, dim=1)[0].item())
+            print(torch.max(preds, dim=1)[0])
+            print('for sowing over')
+            args.l8_bands  = None
+            args.s2_bands  = None
+
+            #Transplantig
+            args.use_s2 = False
+            args.use_s1 = False
+            args.use_planet = False
+            args.use_l8 = True
+
+            args.l8_bands = '[0,1,2,3,4,5,6]'
+
+            l8_bands, s1_bands, s2_bands, ps_bands = get_bands(args.l8_bands, args.s1_bands, args.s2_bands, args.ps_bands)
+            img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            # print('transplant img dim:', img_dimension)
+            X_ = get_input_others(img_, img_dimension, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
+            X_ = concat_satellite(X_, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            inputs = get_model_input(X_, i, j, img_dimension[0])
+
+            # model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+            # if args.model_name in DL_MODELS:
+            #     print('Total trainable model parameters: {}'.format(
+            #         sum(p.numel() for p in model.parameters() if p.requires_grad)))
+            # model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(ethereal-grass-12 [L8-Trans(All Spectral)]).pth.tar'))
+            preds = model_trans(inputs.cuda().float())
+
+            Y[2][i][j] = int(torch.argmax(preds, dim=1)[0].item())
+            args.l8_bands = None
+
+            #Harvesting
+            args.use_s2 = False
+            args.use_s1 = True
+            args.use_planet = False
+            args.use_l8 = False
+
+            args.s1_bands = '[0]'
+
+            l8_bands, s1_bands, s2_bands, ps_bands = get_bands(args.l8_bands, args.s1_bands, args.s2_bands, args.ps_bands)
+            img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            X_ = get_input_others(img_, img_dimension, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
+            X_ = concat_satellite(X_, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            inputs = get_model_input(X_, i, j, img_dimension[0])
+            # model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+            # if args.model_name in DL_MODELS:
+            #     print('Total trainable model parameters: {}'.format(
+            #         sum(p.numel() for p in model.parameters() if p.requires_grad)))
+            # model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/date_prediction_best_val_f1(wise-forest-21 [S1-Harvest(VV)]).pth.tar'))
+            preds = model_harv(inputs.cuda().float())
+            # print('for harv')
 
 
+
+            Y[3][i][j] = int(torch.argmin(preds, dim=1)[0].item())
+            # print(Y[3][i][j])
+            # print('harv over')
+            args.s1_bands = None
+
+            #YIELD
+            args.use_s2 = True
+            args.use_s1 = False
+            args.use_planet = False
+            args.use_l8 = True
+
+            args.l8_bands = '[0]'
+            args.s2_bands = '[0,1,2,3,4,5,6,7,8,9]'
+            # args.model_name = 'unet-fc-yield'
+            l8_bands, s1_bands, s2_bands, ps_bands = get_bands(args.l8_bands, args.s1_bands, args.s2_bands, args.ps_bands)
+            img_dimension, crop_typ_dim =  get_dim(args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            X_ = get_input_others(img_, img_dimension, l8_bands, s2_bands, s1_bands, ps_bands, args.include_indices)
+            sowing = int(Y[1][i][j])-1 if int(Y[1][i][j]) >0 else 0
+            harvesting = int(Y[3][i][j]) -1
+            if args.use_actual_season:
+                X_['s1'][:, :, :, :sowing] = torch.zeros_like(X_['s1'][:, :, :, :sowing])
+                X_['s2'][:, :, :, :sowing] = torch.zeros_like(X_['s2'][:, :, :, :sowing])
+                X_['l8'][:, :, :, :sowing] = torch.zeros_like(X_['l8'][:, :, :, :sowing])
+                X_['planet'][:, :, :, :sowing] = torch.zeros_like(X_['planet'][:, :, :, :sowing])
+                X_['s1'][:, :, :, harvesting+1:] = torch.zeros_like(X_['s1'][:, :, :, harvesting+1:])
+                X_['s2'][:, :, :, harvesting+1:] = torch.zeros_like(X_['s2'][:, :, :, harvesting+1:])
+                X_['l8'][:, :, :, harvesting+1:] = torch.zeros_like(X_['l8'][:, :, :, harvesting+1:])
+                X_['planet'][:, :, :, harvesting+1:] = torch.zeros_like(X_['planet'][:, :, :, harvesting+1:])
+
+                # X_['s1']=X_['s1'][:,:,:,sow_pred:harv_pred+1]
+                # X_['s2']=X_['s2'][:,:,:,sow_pred:harv_pred+1]
+                # X_['l8']=X_['l8'][:,:,:,sow_pred:harv_pred+1]
+                # X_['planet']=X_['planet'][:,:,:,sow_pred:harv_pred+1]
+                # args.num_timesteps=harv_pred-sow_pred+1
+            X_ = concat_satellite(X_, args.use_s1, args.use_s2, args.use_l8, args.use_planet)
+            inputs = get_model_input(X_, i, j, img_dimension[0])
+            # model = croptype_models.get_model(input_shape=img_dimension, **vars(args))
+            # if args.model_name in DL_MODELS:
+            #     print('YYyyyyyyyYYYYYYYYYYYYYYYYY')
+            #     print('Total trainable model parameters: {}'.format(
+            #         sum(p.numel() for p in model.parameters() if p.requires_grad)))
+            # model.load_state_dict(torch.load('/home/parichya/Documents/model_weights/crop_yield [Fusion(L8-UB,S2-All)].pth.tar'))
+            preds = model_yield(inputs.cuda().float())
+
+
+            Y[4][i][j] = preds[0].item()
+            args.s2_bands = None
+            args.l8_bands = None
+
+        # print(Y[0])
+        # print(Y[1])
+        # print(Y[2])
+        # print(Y[3])
+
+        # Y = Y.numpy()
+        print('sow avg:',np.average(Y[1][Y[1]>0]))
+        print('harvest avg:',np.average(Y[3][Y[3]>0]))
+        if np.average(Y[1][Y[1]>0])<np.average(Y[3][Y[3]>0]):
+            print('saved')
+            np.save('/home/parichya/Documents/deploy/deploy_test/deploy'+str(uid)+'.npy', Y)
+
+    plot_arr((Y[0]))
+    plot_arr(norm_max(Y[1]))
+    plot_arr(norm_plot(Y[2]))
+    plot_arr(norm_plot(Y[3]))
+    plot_arr(norm_max(Y[4]))
 
 
 if __name__ == "__main__":

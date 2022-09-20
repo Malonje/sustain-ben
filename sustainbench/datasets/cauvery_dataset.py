@@ -154,6 +154,13 @@ class CauveryDataset(SustainBenchDataset):
         self._country = 'cauvery'
 
         split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv')).dropna(subset=['SPLIT_YIELD'])
+        # print(split_df['PLOT_ID'][2380:2390])
+        # split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv'))
+
+        # split_df=split_df[split_df['UNIQUE_ID']==2299].dropna(subset=['SPLIT_YIELD']).reset_index(drop=True)
+        # split_df['SPLIT_YIELD'][0]='test'
+        # split_df['SPLIT'][0]='test'
+        # print(split_df)
         split_df['id'] = split_df['UNIQUE_ID']
         split_df['partition'] = split_df['SPLIT_YIELD'].apply(lambda split: partition_to_idx[split])
 

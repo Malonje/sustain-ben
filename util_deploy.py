@@ -39,8 +39,11 @@ def get_parser():
                         help="country to predict over",
                         default="cauvery")
 
+
     parser.add_argument('--include_indices', type=str2bool, default=True,
                         help="Include ndvi and gcvi as input features")
+    parser.add_argument('--use_actual_season', type=str2bool, default=True,
+                        help="Include true season")
 
     parser.add_argument('--epochs', type=int, default=130,
                         help="# of times to train over the dataset")

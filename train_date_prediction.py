@@ -5,6 +5,7 @@ Script for training and evaluating a model
 """
 from cmath import nan
 import os
+import pandas as pd
 import loss_fns
 import croptype_models
 import datetime
@@ -134,7 +135,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
     best_val_f1 = 0
     best_val_acc = 0
     best_val_rmse = 10000000
-
+    # store_rmse=pd.DataFrame(columns=['RMSE'])
     for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
 
@@ -198,8 +199,8 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     # inputs = inputs.cuda()
-                    print(inputs.shape)
-                    preds = model(inputs)
+                    # print(inputs.shape)
+                    # preds = model(inputs)
                     # print(preds.shape, targets.shape)
                     loss = torch.sum(loss_fn(preds, targets))
                     ep_loss.append(loss.item())
@@ -233,6 +234,10 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
             accuracy = sum(ep_acc) / len(ep_acc)
             f1 = sum(ep_f1) / len(ep_f1)
+            # print(ep_rmse)
+            # df2=pd.DataFrame(columns=['RMSE'])
+            # df2['RMSE']=ep_rmse
+            # store_rmse = store_rmse.append(df2,ignore_index=True)
             rmse = sum(ep_rmse) / len(ep_rmse)
             loss = sum(ep_loss) / len(ep_loss)
 
@@ -269,6 +274,8 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     })
                     print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                     # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+
+    # store_rmse.to_csv('/home/parichya/Documents/deploy/eval_results.csv')
     if args.use_testing:
         model.load_state_dict(torch.load(f"../model_weights/date_prediction_best_val_rmse({run_name}).pth.tar"))
         for split in ['val', 'test']:

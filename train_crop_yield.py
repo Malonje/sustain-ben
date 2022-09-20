@@ -137,7 +137,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
     for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
 
-        for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
+        for split in ['train', 'val'] if not args.eval_on_test else ['val','test']:
             running_train_scores = defaultdict(list)
             train_data = dataloaders.get_subset(split)
 
