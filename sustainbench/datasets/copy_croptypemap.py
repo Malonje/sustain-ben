@@ -10,13 +10,68 @@ import json
 
 import torchvision.transforms as transforms
 from sklearn.metrics import f1_score, accuracy_score
-from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS, MEANS, STDS
+from constants import BANDS, NUM_CLASSES, GRID_SIZE, CM_LABELS, CROPS
 
 
 # for augmentation
 # from torchsat.transforms import transforms_cls, transforms_det, transforms_seg
 # import albumentations as A
 # BAND STATS
+MEANS = {'l8': {'cauvery': np.array([12568.23693711, 12884.11980095, 13913.08572643, 13744.98251397,
+                                     19348.8538171,  14400.93252211, 12137.75946084, 32752.88348736]
+                                    )},
+         's1': {'cauvery': np.array([5.34968438e+04, 5.36555564e+04, 3.42925821e+01]),
+                'ghana': np.array([-10.50, -17.24, 1.17]),
+                'southsudan': np.array([-9.02, -15.26, 1.15]),
+                'tanzania': np.array([-9.80, -17.05, 1.30])},
+         's2': {'cauvery': np.array([3077.80182893, 3084.27244785, 2944.2416295,  3356.42566003, 3884.70291555,
+                                     4146.09093281, 4089.9417718,  4226.28939138, 2381.03087606, 1744.84373434]
+                                    ),
+                'ghana': np.array(
+             [2620.00, 2519.89, 2630.31, 2739.81, 3225.22, 3562.64, 3356.57, 3788.05, 2915.40, 2102.65]),
+                'southsudan': np.array(
+                    [2119.15, 2061.95, 2127.71, 2277.60, 2784.21, 3088.40, 2939.33, 3308.03, 2597.14, 1834.81]),
+                'tanzania': np.array(
+                    [2551.54, 2471.35, 2675.69, 2799.99, 3191.33, 3453.16, 3335.64, 3660.05, 3182.23, 2383.79]),
+                'germany': np.array(
+                    [1991.37, 2026.92, 2136.22, 6844.82, 9951.98, 11638.58, 3664.66, 12375.27, 7351.99, 5027.96])},
+         'planet': {'ghana': np.array([1264.81, 1255.25, 1271.10, 2033.22]),
+                    'southsudan': np.array([1091.30, 1092.23, 1029.28, 2137.77]),
+                    'tanzania': np.array([1014.16, 1023.31, 1114.17, 1813.49])},
+         's2_cldfltr': {'ghana': np.array(
+             [1362.68, 1317.62, 1410.74, 1580.05, 2066.06, 2373.60, 2254.70, 2629.11, 2597.50, 1818.43]),
+                        'southsudan': np.array(
+                            [1137.58, 1127.62, 1173.28, 1341.70, 1877.70, 2180.27, 2072.11, 2427.68, 2308.98, 1544.26]),
+                        'tanzania': np.array(
+                            [1148.76, 1138.87, 1341.54, 1517.01, 1937.15, 2191.31, 2148.05, 2434.61, 2774.64,
+                             2072.09])}}
+
+STDS = {'l8': {'cauvery': np.array([ 9811.34429255,  9679.50989908,  8985.48993455, 9001.85187442,
+                                      8666.72647788,  6477.19337138,  5428.2011345,  18263.04960189]
+                                    )},
+        's1': {'cauvery': np.array([2.53692211e+04, 2.52311387e+04, 7.32906139e+00]),
+               'ghana': np.array([3.57, 4.86, 5.60]),
+               'southsudan': np.array([4.49, 6.68, 21.75]),
+               'tanzania': np.array([3.53, 4.78, 16.61])},
+        's2': {'cauvery': np.array([3303.74822819, 3057.09074463, 2946.57655367, 2997.19526042, 2610.09702032,
+                                     2469.30697291, 2483.67488076, 2369.08866661, 1603.58160356, 1419.04843785]
+                                ),
+                'ghana': np.array(
+            [2171.62, 2085.69, 2174.37, 2084.56, 2058.97, 2117.31, 1988.70, 2099.78, 1209.48, 918.19]),
+               'southsudan': np.array(
+                   [2113.41, 2026.64, 2126.10, 2093.35, 2066.81, 2114.85, 2049.70, 2111.51, 1320.97, 1029.58]),
+               'tanzania': np.array(
+                   [2290.97, 2204.75, 2282.90, 2214.60, 2182.51, 2226.10, 2116.62, 2210.47, 1428.33, 1135.21]),
+               'germany': np.array(
+                   [1943.62, 1755.82, 1841.09, 5703.38, 5104.90, 5136.54, 1663.27, 5125.05, 3682.57, 3273.71])},
+        'planet': {'ghana': np.array([602.51, 598.66, 637.06, 966.27]),
+                   'southsudan': np.array([526.06, 517.05, 543.74, 1022.14]),
+                   'tanzania': np.array([492.33, 492.71, 558.90, 833.65])},
+        's2_cldfltr': {
+            'ghana': np.array([511.19, 495.87, 591.44, 590.27, 745.81, 882.05, 811.14, 959.09, 964.64, 809.53]),
+            'southsudan': np.array(
+                [548.64, 547.45, 660.28, 677.55, 896.28, 1066.91, 1006.01, 1173.19, 1167.74, 865.42]),
+            'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
 
 
 
@@ -258,7 +313,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         # try:
         #    planet = torch.from_numpy(planet).permute(1, 0, 2, 3)
         # except:
-        #    planet = torch.zeros((4, 184, 108, 108))  
+        #    planet = torch.zeros((4, 184, 108, 108))
 
         if self.resize_planet:
             s1 = transforms.Resize(self.img_dim, interpolation=transforms.InterpolationMode.NEAREST)(s1)
@@ -332,9 +387,9 @@ class CropTypeMappingDataset(SustainBenchDataset):
             planet = torch.cat((planet, torch.unsqueeze(ndvi_planet, 0), torch.unsqueeze(gcvi_planet, 0)), 0)
             l8 = torch.cat((l8, torch.unsqueeze(ndvi_l8, 0), torch.unsqueeze(gcvi_l8, 0)), 0)
         #print('before pad:', l8.shape)
-        s1 = self.pad(s1)
-        s2 = self.pad(s2)
-        l8 = self.pad(l8)
+        # s1 = self.pad(s1)
+        # s2 = self.pad(s2)
+        # l8 = self.pad(l8)
 # <<<<<<< HEAD
 #         planet = self.pad(planet)
 # =======
@@ -373,7 +428,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
             return label[32:64, 32:64]
         else:
             label = np.load(os.path.join(self.data_dir, self.country, f'truth@{self.truth_mask}m', f'{self.country}_{loc_id}.npz'))
-            label = torch.from_numpy(np.expand_dims(label['crop_type'], 0))
+            label = torch.from_numpy(np.expand_dims(label['sowing_date'], 0))
             label = transforms.Resize(self.img_dim)(label)[0]
         return label
 

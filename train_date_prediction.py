@@ -102,6 +102,7 @@ def evaluate(model_name, preds, labels, country, loss_fn=None, reduction=None, l
 
 def train_dl_model(model, model_name, dataloaders, args, dataset):
     config = {
+        'seed' : args.seed,
         'optimizer': args.optimizer,
         'lr': args.lr,
         'weight_decay': args.weight_decay,
@@ -112,7 +113,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         'use_planet': args.use_planet,
         'use_actual_season': args.use_actual_season
     }
-    run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=args.run_name, config=config)
+    # run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:
@@ -123,7 +124,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         sat_names += "L8"
     if args.use_planet:
         sat_names += "planet"
-
+    run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=f'{args.run_name}_{sat_names}_{args.l8_bands}_{args.s2_bands}_{args.s1_bands}', config=config)
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
@@ -135,7 +136,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
     best_val_f1 = 0
     best_val_acc = 0
     best_val_rmse = 10000000
-    # store_rmse=pd.DataFrame(columns=['RMSE'])
+
     for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
 
@@ -174,7 +175,6 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                                 inputs[sat] = inputs[sat].to(args.device)
 
                     targets = targets.to(args.device)
-
                     temp_inputs = None
                     if args.use_s1:
                         temp_inputs = inputs['s1']
@@ -199,8 +199,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     # inputs = inputs.cuda()
-                    # print(inputs.shape)
-                    # preds = model(inputs)
+                    preds = model(inputs)
                     # print(preds.shape, targets.shape)
                     loss = torch.sum(loss_fn(preds, targets))
                     ep_loss.append(loss.item())
@@ -234,10 +233,6 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
 
             accuracy = sum(ep_acc) / len(ep_acc)
             f1 = sum(ep_f1) / len(ep_f1)
-            # print(ep_rmse)
-            # df2=pd.DataFrame(columns=['RMSE'])
-            # df2['RMSE']=ep_rmse
-            # store_rmse = store_rmse.append(df2,ignore_index=True)
             rmse = sum(ep_rmse) / len(ep_rmse)
             loss = sum(ep_loss) / len(ep_loss)
 
@@ -275,7 +270,6 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
                     print(f"[Train] F1: {f1}, RMSE: {rmse}, Acc: {accuracy}, NLLLoss: {loss}")
                     # print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
 
-    # store_rmse.to_csv('/home/parichya/Documents/deploy/eval_results.csv')
     if args.use_testing:
         model.load_state_dict(torch.load(f"../model_weights/date_prediction_best_val_rmse({run_name}).pth.tar"))
         for split in ['val', 'test']:

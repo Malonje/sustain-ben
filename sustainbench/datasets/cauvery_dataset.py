@@ -179,6 +179,7 @@ class CauveryDataset(SustainBenchDataset):
         x = self.get_input(idx)
         y = self.get_label(idx)
         metadata = None #self.get_metadata(idx)
+
         if self.task == "yield" and self.use_actual_season is True:
             sowing = int(self.y_array[idx][2].item()) - 1 if self.y_array[idx][2].item() > 0 else 0
             harvesting = int(self.y_array[idx][4].item()) - 1
@@ -240,11 +241,11 @@ class CauveryDataset(SustainBenchDataset):
         if l8.shape[2] == 0 or l8.shape[3] == 0:
             # print(planet.shape)
             l8 = np.zeros((l8.shape[0], l8.shape[1], s2.shape[2], s2.shape[3]))
-        # print(l8.shape)
-        s1 = s1.transpose(1, 2, 3, 0)
-        s2 = s2.transpose(1, 2, 3, 0)
-        planet = planet.transpose(1, 2, 3, 0)
-        l8 = l8.transpose(1, 2, 3, 0)
+
+        # s1 = s1.transpose(1, 2, 3, 0)
+        # s2 = s2.transpose(1, 2, 3, 0)
+        # planet = planet.transpose(1, 2, 3, 0)
+        # l8 = l8.transpose(1, 2, 3, 0)
         s1 = torch.from_numpy(s1)
         s2 = torch.from_numpy(s2)
         l8 = torch.from_numpy(l8)
@@ -253,20 +254,52 @@ class CauveryDataset(SustainBenchDataset):
         # print(l8.shape, s1.shape, s2.shape)
         # planet = torch.from_numpy(planet.astype(np.int32))
 
+        # if self.resize_planet:
+        #     # print(s1.shape, s2.shape)
+        #     s1 = s1.permute(3, 0, 1, 2)
+        #     s1 = transforms.Resize(self.img_dim)(s1)
+        #     s1 = s1.permute(1, 2, 3, 0)
+        #     s2 = s2.permute(3, 0, 1, 2)
+        #     s2 = transforms.Resize(self.img_dim)(s2)
+        #     s2 = s2.permute(1, 2, 3, 0)
+        #     # print(self.img_dim)
+        #     l8 = l8.permute(3, 0, 1, 2)
+        #     l8 = transforms.Resize(self.img_dim)(l8)
+        #     l8 = l8.permute(1, 2, 3, 0)
+        #     planet = planet.permute(3, 0, 1, 2)
+        #     planet = transforms.Resize(self.img_dim)(planet)
+        #     planet = planet.permute(1, 2, 3, 0)
+
         if self.resize_planet:
-            # print(s1.shape, s2.shape)
-            s1 = s1.permute(3, 0, 1, 2)
-            s1 = transforms.Resize(self.img_dim)(s1)
+            s1 = transforms.Resize(self.img_dim, interpolation=transforms.InterpolationMode.NEAREST)(s1)
+            s1 = s1[:, :, None, :,:]
+            # s1= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(s1)
+            s1=torch.squeeze(s1, 2)
+
+
             s1 = s1.permute(1, 2, 3, 0)
-            s2 = s2.permute(3, 0, 1, 2)
-            s2 = transforms.Resize(self.img_dim)(s2)
+            # s2 = s2.permute(3, 0, 1, 2)
+            s2 = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(s2)
+
+            s2 = s2[:, :, None, :,:]
+
+            s2= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(s2)
+            s2=torch.squeeze(s2, 2)
+            # s2 = s2.permute(3, 0, 1, 2)
             s2 = s2.permute(1, 2, 3, 0)
-            # print(self.img_dim)
-            l8 = l8.permute(3, 0, 1, 2)
-            l8 = transforms.Resize(self.img_dim)(l8)
+
+
+            # l8 = l8.permute(3, 0, 1, 2)
+            l8 = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(l8)
+            l8 = l8[:, :, None, :,:]
+            l8= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(l8)
+            l8=torch.squeeze(l8, 2)
             l8 = l8.permute(1, 2, 3, 0)
-            planet = planet.permute(3, 0, 1, 2)
-            planet = transforms.Resize(self.img_dim)(planet)
+
+            planet = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(planet)
+            planet = planet[:, :, None, :,:]
+            planet = transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(planet)
+            planet = torch.squeeze(planet, 2)
             planet = planet.permute(1, 2, 3, 0)
         else:
             s1 = s1.permute(3, 0, 1, 2)
@@ -282,6 +315,7 @@ class CauveryDataset(SustainBenchDataset):
             planet = transforms.CenterCrop(PLANET_DIM)(planet)
             planet = planet.permute(1, 2, 3, 0)
         # print(planet.shape, s1.shape, s2.shape)
+
 
         # Include NDVI and GCVI for s2 and planet, calculate before normalization and numband selection
         if self.calculate_bands:
@@ -320,6 +354,7 @@ class CauveryDataset(SustainBenchDataset):
         # s1 = self.pad(s1)
         # s2 = self.pad(s2)
         # planet = self.pad(planet)
+
         return {'s1': s1[self.s1_bands], 's2': s2[self.s2_bands], 'l8': l8[self.l8_bands], 'planet': planet[self.ps_bands]}
 
 
