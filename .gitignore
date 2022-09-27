@@ -221,3 +221,4 @@ data/
 wandb/
 /model_weights/
 *.cmd
+.idea/*

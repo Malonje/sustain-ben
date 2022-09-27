@@ -110,7 +110,7 @@ def train_dl_model(model, model_name, dataloaders, args):
         'use_s2': args.use_s2,
         'use_planet': args.use_planet,
     }
-    run_name = logger.init(project='crop_type_mapping_v3', reinit=True, run_name=args.run_name, config=config)
+    run_name = logger.init(project='crop_type_mapping_v1', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
     sat_names = ""
     if args.use_s1:
@@ -121,10 +121,6 @@ def train_dl_model(model, model_name, dataloaders, args):
         sat_names += "L8"
     if args.use_planet:
         sat_names += "planet"
-
-
-
-
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -140,6 +136,7 @@ def train_dl_model(model, model_name, dataloaders, args):
         for split in ['train', 'val'] if not args.eval_on_test else ['val', 'test']:
             correct_pixels = 0
             total_pixels = 0
+            cm = None
             losses = []
             train_data = dataloaders.get_subset(split)
 
@@ -206,6 +203,10 @@ def train_dl_model(model, model_name, dataloaders, args):
                                                                                    gamma=args.gamma)
                     correct_pixels += total_correct
                     total_pixels += num_pixels
+                    if cm is None:
+                        cm = cm_cur
+                    elif num_pixels>0:
+                        cm += cm_cur
                     losses.append(loss)
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
@@ -235,6 +236,8 @@ def train_dl_model(model, model_name, dataloaders, args):
                     logger.log({
                         f"Validation Accuracy": accuracy,
                         f"Validation Loss": sum(losses) / len(losses),
+                        f"Validation F1_avg": metrics.get_f1score(cm, avg=True),
+                        f"Validation Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
                         "X-Axis": i,
                     })
                     print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
@@ -245,6 +248,8 @@ def train_dl_model(model, model_name, dataloaders, args):
                     logger.log({
                         f"Train Accuracy": accuracy,
                         f"Train Loss": sum(losses) / len(losses),
+                        f"Train F1_avg": metrics.get_f1score(cm, avg=True),
+                        f"Train Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
                         "X-Axis": i
                     })
                     print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
@@ -342,12 +347,16 @@ def train_dl_model(model, model_name, dataloaders, args):
                 if split == 'test'  :
                     logger.log({
                             f"Test Accuracy": accuracy,
+                            f"Test F1_avg": metrics.get_f1score(cm, avg=True),
+                            f"Test Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
                         })
                     print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                 else:
                     if split == 'val':
                         logger.log({
                             f"Validation Accuracy": accuracy,
+                            f"Validation F1_avg": metrics.get_f1score(cm, avg=True),
+                            f"Validation Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
                             "X-Axis": i,
                         })
                         print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
@@ -357,6 +366,8 @@ def train_dl_model(model, model_name, dataloaders, args):
                     else:
                         logger.log({
                             f"Train Accuracy": accuracy,
+                            f"Train F1_avg": metrics.get_f1score(cm, avg=True),
+                            f"Train Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
                             "X-Axis": i
                         })
                         print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
