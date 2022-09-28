@@ -231,6 +231,13 @@ def train_dl_model(model, model_name, dataloaders, args):
             if split == 'test':
                 print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}, "
                       f"Loss: {sum(losses) / len(losses)}")
+                logger.log({
+                    f"Test Accuracy": accuracy,
+                    f"Test Loss": sum(losses) / len(losses),
+                    f"Test F1_avg": metrics.get_f1score(cm, avg=True),
+                    f"Test Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
+                    "X-Axis": i,
+                })
             else:
                 if split == 'val':
                     logger.log({
@@ -259,6 +266,7 @@ def train_dl_model(model, model_name, dataloaders, args):
         for split in  ['val', 'test']:
                 correct_pixels = 0
                 total_pixels = 0
+                cm = None
                 train_data = dataloaders.get_subset(split)
 
                 if split == 'train':
@@ -324,6 +332,10 @@ def train_dl_model(model, model_name, dataloaders, args):
                                                                                        gamma=args.gamma)
                         correct_pixels += total_correct
                         total_pixels += num_pixels
+                        if cm is None:
+                            cm = cm_cur
+                        elif num_pixels>0:
+                            cm += cm_cur
 
                         if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                             # If there are valid pixels, update weights
@@ -349,6 +361,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                             f"Test Accuracy": accuracy,
                             f"Test F1_avg": metrics.get_f1score(cm, avg=True),
                             f"Test Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
+                            "X-Axis": i,
                         })
                     print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
                 else:
