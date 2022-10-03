@@ -5,7 +5,7 @@ from torch.utils.data.sampler import WeightedRandomSampler, SubsetRandomSampler
 from sustainbench.common.utils import get_counts, split_into_groups
 from torchvision import transforms
 
-def get_train_loader(loader, dataset, batch_size,
+def get_train_loader(loader, dataset, batch_size, sampler=None,
         uniform_over_groups=None, grouper=None, distinct_groups=True, n_groups_per_batch=None, **loader_kwargs):
     """
     Constructs and returns the data loader for training.
@@ -38,8 +38,8 @@ def get_train_loader(loader, dataset, batch_size,
             return DataLoader(
                 dataset,
                 # shuffle=False, # Shuffle training dataset
-                shuffle=True, # Shuffle training dataset
-                sampler=None,
+                shuffle=True if sampler is None else False, # Shuffle training dataset
+                sampler=sampler,
                 collate_fn=dataset.collate,
                 batch_size=batch_size,
                 **loader_kwargs)

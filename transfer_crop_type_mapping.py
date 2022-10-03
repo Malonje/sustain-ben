@@ -15,8 +15,10 @@ import util
 import numpy as np
 import pickle
 from sustainbench import logger
+import pandas as pd
 
 from torch import autograd
+from torch.utils.data import WeightedRandomSampler
 
 from constants import *
 from tqdm import tqdm
@@ -109,18 +111,10 @@ def train_dl_model(model, model_name, dataloaders, args):
         'use_s1': args.use_s1,
         'use_s2': args.use_s2,
         'use_planet': args.use_planet,
+        'seed': args.seed,
+        'split': args.split
     }
-    run_name = logger.init(project='crop_type_mapping_v1', reinit=True, run_name=args.run_name, config=config)
-    # splits = ['train', 'val'] if not args.eval_on_test else ['test']
-    sat_names = ""
-    if args.use_s1:
-        sat_names += "S1"
-    if args.use_s2:
-        sat_names += "S2"
-    if args.use_l8:
-        sat_names += "L8"
-    if args.use_planet:
-        sat_names += "planet"
+    run_name = logger.init(project='crop_type_mapping_with_splits', reinit=True, run_name=args.run_name, config=config)
 
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
@@ -129,6 +123,14 @@ def train_dl_model(model, model_name, dataloaders, args):
     loss_fn = loss_fns.get_loss_fn(model_name)
     optimizer = loss_fns.get_optimizer(model.parameters(), args.optimizer, args.lr, args.momentum, args.weight_decay)
     best_val = 0
+
+    csv = pd.read_csv(os.path.join(args.path_to_cauvery_images, 'cauvery', f'cauvery_dataset_{args.split}.csv'))
+    csv = csv[csv['SPLIT'] == 'train']
+    paddy_count = len(csv[csv['PADDY_BIN'] == 1])
+    non_paddy_count = len(csv[csv['PADDY_BIN'] == 2])
+    weights = [len(csv)/paddy_count, len(csv)/non_paddy_count]
+    print(weights)
+    sampler = WeightedRandomSampler(weights, len(csv))
 
     for i in range(args.epochs if not args.eval_on_test else 1):
         print('Epoch: {}'.format(i))
@@ -141,14 +143,13 @@ def train_dl_model(model, model_name, dataloaders, args):
             train_data = dataloaders.get_subset(split)
 
             if split == 'train':
-                train_loader = get_train_loader('standard', train_data, args.batch_size)
+                train_loader = get_train_loader('standard', train_data, args.batch_size, sampler=sampler)
                 model.train()
             else:
                 train_loader = get_eval_loader('standard', train_data, args.batch_size)
                 model.eval()
 
             nclass = len(CM_LABELS[args.country]) + 1
-            # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
             for inputs, targets in tqdm(train_loader):
                 targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
                 mask = torch.arange(1, 3)  # tensor([1, 2, 3, 4])
@@ -156,7 +157,6 @@ def train_dl_model(model, model_name, dataloaders, args):
                 targets = torch.index_select(targets, 3, mask)
 
                 targets = targets.permute(0, 3, 1, 2)
-                # cloudmasks = None
 
                 with torch.set_grad_enabled(True):
                     if not args.var_length:
@@ -188,8 +188,6 @@ def train_dl_model(model, model_name, dataloaders, args):
                             temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
 
                     inputs = temp_inputs
-                    # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
-                    # print(inputs.shape)
                     inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
                     inputs = inputs.float()
                     inputs = inputs.cuda()
@@ -207,47 +205,57 @@ def train_dl_model(model, model_name, dataloaders, args):
                         cm = cm_cur
                     elif num_pixels>0:
                         cm += cm_cur
-                    losses.append(loss)
+                    if loss is not None:
+                        losses.append(loss.item())
 
                     if split == 'train' and loss is not None:  # TODO: not sure if we need this check?
                         # If there are valid pixels, update weights
                         optimizer.zero_grad()
-                        # with autograd.detect_anomaly():
                         loss.backward()
                         if args.clip_val:
                             # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
                             torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
                         optimizer.step()
-                        total_norm = 0
-                        for p in model.parameters():
-                            if p.grad is not None:
-                                param_norm = p.grad.data.norm(2)
-                                total_norm += param_norm.item() ** 2
-                        gradnorm = total_norm ** (1. / 2)
-                        # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
+                        # total_norm = 0
+                        # for p in model.parameters():
+                        #     if p.grad is not None:
+                        #         param_norm = p.grad.data.norm(2)
+                        #         total_norm += param_norm.item() ** 2
+                        # gradnorm = total_norm ** (1. / 2)
+                        # # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
 
             accuracy = correct_pixels / total_pixels
+            f1 = metrics.get_f1score(cm, avg=True)
+            TP = cm[0][0]
+            FN = cm[0][1]
+            FP = cm[1][0]
+            TN = cm[1][1]
+            precision = TP / (TP+FP)
+            recall = TP / (TP+FN)
 
             if split == 'test':
-                print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}, "
-                      f"Loss: {sum(losses) / len(losses)}")
+                print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, "
+                      f"True Paddy: {TP}, False Non-Paddy: {FN}, False Paddy: {FP}, True Non-Paddy: {TN}"
+                      f", F1: {f1}, Accuracy: {accuracy}, ")
                 logger.log({
                     f"Test Accuracy": accuracy,
-                    f"Test Loss": sum(losses) / len(losses),
-                    f"Test F1_avg": metrics.get_f1score(cm, avg=True),
-                    f"Test Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
+                    f"Test F1_avg": f1,
+                    f"Test Precision": precision,
+                    f"Test Recall": recall,
                     "X-Axis": i,
                 })
             else:
                 if split == 'val':
                     logger.log({
                         f"Validation Accuracy": accuracy,
-                        f"Validation Loss": sum(losses) / len(losses),
-                        f"Validation F1_avg": metrics.get_f1score(cm, avg=True),
-                        f"Validation Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
+                        f"Validation F1_avg": f1,
+                        f"Validation Precision": precision,
+                        f"Validation Recall": recall,
                         "X-Axis": i,
                     })
-                    print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                    print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}, "
+                          f"True Paddy: {TP}, False Non-Paddy: {FN}, False Paddy: {FP}, True Non-Paddy: {TN}, "
+                          f"Precision: {precision}, Recall: {recall}, F1: {f1}")
                     if best_val < accuracy and not args.eval_on_test:
                         best_val = accuracy
                         torch.save(model.state_dict(), f"../model_weights/{run_name}.pth.tar")
@@ -255,13 +263,16 @@ def train_dl_model(model, model_name, dataloaders, args):
                     logger.log({
                         f"Train Accuracy": accuracy,
                         f"Train Loss": sum(losses) / len(losses),
-                        f"Train F1_avg": metrics.get_f1score(cm, avg=True),
-                        f"Train Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
+                        f"Train F1_avg": f1,
+                        f"Train Precision": precision,
+                        f"Train Recall": recall,
                         "X-Axis": i
                     })
-                    print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                    print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}, "
+                          f"True Paddy: {TP}, False Non-Paddy: {FN}, False Paddy: {FP}, True Non-Paddy: {TN}, "
+                          f"Precision: {precision}, Recall: {recall}, F1: {f1}")
 
-    if args.use_testing:
+    if args.use_testing and not args.eval_on_test:
         model.load_state_dict(torch.load(f"../model_weights/{run_name}.pth.tar"))
         for split in  ['val', 'test']:
                 correct_pixels = 0
@@ -277,15 +288,13 @@ def train_dl_model(model, model_name, dataloaders, args):
                     model.eval()
 
                 nclass = len(CM_LABELS[args.country]) + 1
-                # for inputs, targets, cloudmasks, hres_inputs in tqdm(dl):
                 for inputs, targets in tqdm(train_loader):
                     targets = F.one_hot(targets.to(torch.int64), num_classes=nclass)
-                    mask = torch.arange(1, 3)  # tensor([1, 2, 3, 4])
+                    mask = torch.arange(1, 3)
 
                     targets = torch.index_select(targets, 3, mask)
 
                     targets = targets.permute(0, 3, 1, 2)
-                    # cloudmasks = None
 
                     with torch.set_grad_enabled(True):
                         if not args.var_length:
@@ -317,9 +326,7 @@ def train_dl_model(model, model_name, dataloaders, args):
                                 temp_inputs = torch.cat((temp_inputs, inputs['planet']), dim=1)
 
                         inputs = temp_inputs
-                        # inputs = torch.cat((inputs['s1'], inputs['s2'], inputs['planet']), dim=1)
-                        # print(inputs.shape)
-                        inputs = inputs.permute(0, 1, 4, 2, 3)  # torch.Size([2, 17, 64, 64, 256]) After permute torch.Size([2, 17, 256, 64, 64])
+                        inputs = inputs.permute(0, 1, 4, 2, 3)
                         inputs = inputs.float()
                         inputs = inputs.cuda()
 
@@ -346,44 +353,42 @@ def train_dl_model(model, model_name, dataloaders, args):
                                 # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
                                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
                             optimizer.step()
-                            total_norm = 0
-                            for p in model.parameters():
-                                if p.grad is not None:
-                                    param_norm = p.grad.data.norm(2)
-                                    total_norm += param_norm.item() ** 2
-                            gradnorm = total_norm ** (1. / 2)
-                            # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
+                            # total_norm = 0
+                            # for p in model.parameters():
+                            #     if p.grad is not None:
+                            #         param_norm = p.grad.data.norm(2)
+                            #         total_norm += param_norm.item() ** 2
+                            # gradnorm = total_norm ** (1. / 2)
+                            # # gradnorm = torch.norm(list(model.parameters())[0].grad).detach().cpu() / torch.prod(torch.tensor(list(model.parameters())[0].shape), dtype=torch.float32)
 
                 accuracy = correct_pixels / total_pixels
+                f1 = metrics.get_f1score(cm, avg=True)
+                TP = cm[0][0]
+                FN = cm[0][1]
+                FP = cm[1][0]
+                TN = cm[1][1]
+                precision = TP / (TP+FP)
+                recall = TP / (TP+FN)
 
-                if split == 'test'  :
+                if split == 'test':
+                    print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, "
+                          f"True Paddy: {TP}, False Non-Paddy: {FN}, False Paddy: {FP}, True Non-Paddy: {TN}, "
+                          f"F1: {f1}, Accuracy: {accuracy}")
                     logger.log({
-                            f"Test Accuracy": accuracy,
-                            f"Test F1_avg": metrics.get_f1score(cm, avg=True),
-                            f"Test Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
-                            "X-Axis": i,
-                        })
-                    print(f"[Test] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
-                else:
-                    if split == 'val':
+                        f"Test Accuracy": accuracy,
+                        f"Test F1_avg": f1,
+                        f"Test Precision": precision,
+                        f"Test Recall": recall,
+                    })
+                elif split == 'val':
                         logger.log({
                             f"Validation Accuracy": accuracy,
-                            f"Validation F1_avg": metrics.get_f1score(cm, avg=True),
-                            f"Validation Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
-                            "X-Axis": i,
+                            f"Validation F1_avg": f1,
+                            f"Validation Precision": precision,
+                            f"Validation Recall": recall,
                         })
-                        print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
-                        if best_val < accuracy and not args.eval_on_test:
-                            best_val = accuracy
-                            torch.save(model.state_dict(), f"../model_weights/{run_name}.pth.tar")
-                    else:
-                        logger.log({
-                            f"Train Accuracy": accuracy,
-                            f"Train F1_avg": metrics.get_f1score(cm, avg=True),
-                            f"Train Acc_avg": sum([cm[i][i] for i in range(cm.shape[0])]) / np.sum(cm),
-                            "X-Axis": i
-                        })
-                        print(f"[Train] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}")
+                        print(f"[Validation] #Correct: {correct_pixels}, #Pixels {total_pixels}, Accuracy: {accuracy}"
+                              f"True Paddy: {TP}, False Non-Paddy: {FN}, False Paddy: {FP}, True Non-Paddy: {TN}")
 
 def train(model, model_name, args=None, dataloaders=None, X=None, y=None):
     """ Trains the model on the inputs
@@ -416,49 +421,43 @@ def main(args):
         elif args.device == 'cpu':
             use_cuda = False
         util.random_seed(seed_value=args.seed, use_cuda=use_cuda)
-    l8_bands = [0,1,2,3,4,5,6,7]
-    s1_bands = [0,1,2]
-    s2_bands = [0,1,2,3,4,5,6,7,8,9]
-    ps_bands = [0,1,2,3]
+    l8_bands = [0, 1, 2, 3, 4, 5, 6, 7]
+    s1_bands = [0, 1, 2]
+    s2_bands = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    ps_bands = [0, 1, 2, 3]
     if args.l8_bands is not None:
-        l8_bands=args.l8_bands[1:-1]
-        l8_bands=l8_bands.split(',')
-        l8_bands=[int(x) for x in l8_bands]
+        l8_bands = args.l8_bands[1:-1]
+        l8_bands = l8_bands.split(',')
+        l8_bands = [int(x) for x in l8_bands]
     if args.s1_bands is not None:
-        s1_bands=args.s1_bands[1:-1]
-        s1_bands=s1_bands.split(',')
-        s1_bands=[int(x) for x in s1_bands]
+        s1_bands = args.s1_bands[1:-1]
+        s1_bands = s1_bands.split(',')
+        s1_bands = [int(x) for x in s1_bands]
     if args.s2_bands is not None:
-        s2_bands=args.s2_bands[1:-1]
-        s2_bands=s2_bands.split(',')
-        s2_bands=[int(x) for x in s2_bands]
+        s2_bands = args.s2_bands[1:-1]
+        s2_bands = s2_bands.split(',')
+        s2_bands = [int(x) for x in s2_bands]
     if args.ps_bands is not None:
-        ps_bands=args.ps_bands[1:-1]
-        ps_bands=ps_bands.split(',')
-        ps_bands=[int(x) for x in ps_bands]
+        ps_bands = args.ps_bands[1:-1]
+        ps_bands = ps_bands.split(',')
+        ps_bands = [int(x) for x in ps_bands]
 
     # load in data generator
-
-    sat_names = ""
-    if args.use_s1:
-        sat_names += "S1"
-    if args.use_s2:
-        sat_names += "S2"
-    if args.use_l8:
-        sat_names += "L8"
     if args.use_planet:
-        sat_names += "planet"
-
-    img_dimension = (32,32)
-    truth_mask = 10
-    if 'planet' in sat_names:
+        img_dimension = (108, 108)
         truth_mask = 3
-        img_dimension = (108,108)
-    elif sat_names == 'L8':
+    elif args.use_s1:
+        img_dimension = (32, 32)
+        truth_mask = 10
+    elif args.use_s2:
+        img_dimension = (32, 32)
+        truth_mask = 10
+    else:
+        img_dimension = (12, 12)
         truth_mask = 30
-        img_dimension = (12,12)
+
     dataset = get_dataset(dataset='africa_crop_type_mapping', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, splitting_technique=args.split,
                           l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands, truth_mask=truth_mask, img_dim=img_dimension)
 
     dataloaders = dataset
@@ -483,16 +482,7 @@ def main(args):
         os.mkdir(args.save_dir)
 
     print("Starting to train")
-    # train model
     train(model, args.model_name, args, dataloaders=dataloaders)
-    # print("\n\nargs.save_dir= ",args.save_dir)
-    # print(args.name)
-    # evaluate model
-
-    # save model
-    # if args.model_name in DL_MODELS:
-    #     torch.save(model.state_dict(), os.path.join(args.save_dir, args.name))
-    #     print("MODEL SAVED")
 
 
 if __name__ == "__main__":
