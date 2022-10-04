@@ -361,6 +361,9 @@ def get_train_parser():
     parser.add_argument('--shuffle', type=str2bool,
                         help="shuffle dataset between epochs?",
                         default=True)
+    parser.add_argument('--split', type=str, default="regionwise",
+                        help="Choose the splitting technique for train & test datasets",
+                        choices=("regionwise", "plotwise"))
     parser.add_argument('--use_testing', type=str2bool,
                         help="shuffle dataset between epochs?",
                         default=True)
