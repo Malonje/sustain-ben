@@ -90,7 +90,7 @@ class CropTypeMappingDataset(SustainBenchDataset):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
-
+        self._splitting_technique = splitting_technique
         self.l8_bands = l8_bands
         self.s1_bands = s1_bands
         self.s2_bands = s2_bands
@@ -411,9 +411,10 @@ class CropTypeMappingDataset(SustainBenchDataset):
           grid - (tensor) a normalized version of the input grid
         """
         #print(grid.shape)
+
         num_bands = grid.shape[0]
-        means = MEANS[satellite][self.country]
-        stds = STDS[satellite][self.country]
+        means = MEANS[self.splitting_technique][satellite][self.country]
+        stds = STDS[self.splitting_technique][satellite][self.country]
         grid = (grid - means[:num_bands].reshape(num_bands, 1, 1, 1)) / stds[:num_bands].reshape(num_bands, 1, 1, 1)
 
         if satellite not in ['s1', 's2', 'l8', 'planet']:
@@ -468,6 +469,13 @@ class CropTypeMappingDataset(SustainBenchDataset):
         True if planet satellite imagery will be resized to other satellite sizes.
         """
         return self._resize_planet
+
+    @property
+    def splitting_technique(self):
+        """
+        True if planet satellite imagery will be resized to other satellite sizes.
+        """
+        return self._splitting_technique
 
     @property
     def calculate_bands(self):

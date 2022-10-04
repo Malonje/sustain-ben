@@ -36,16 +36,44 @@ BANDS = {'l8': {'8': {'UBLUE': 0, 'BLUE': 1, 'GREEN': 2, 'RED': 3, 'NIR': 4, 'SW
                 '4': {'BLUE': 0, 'GREEN': 1, 'RED': 2, 'NIR': 3}},
          'planet': {'4': {'BLUE':   0, 'GREEN': 1, 'RED': 2, 'NIR': 3}}}
 
-MEANS = {'l8': {'cauvery': np.array([12558.89427922, 12872.24406909, 13913.83910639, 13738.11095695,
-                                     19408.52814944, 14467.39204520, 12173.49894834, 32866.65794374]
-                                    )},
-         's1': {'cauvery': np.array([5.36506369e+04, 5.38196559e+04, 3.44168135e+01]),
+MEANS = {'regionwise':
+
+             {'l8': {'cauvery': np.array([12568.23693711, 12884.11980095, 13913.08572643, 13744.98251397,
+                            19348.8538171,  14400.93252211, 12137.75946084, 32752.88348736])},
+         's1': {'cauvery': np.array([5.34968438e+04, 5.36555564e+04, 3.42925821e+01]),
                 'ghana': np.array([-10.50, -17.24, 1.17]),
                 'southsudan': np.array([-9.02, -15.26, 1.15]),
                 'tanzania': np.array([-9.80, -17.05, 1.30])},
-         's2': {'cauvery': np.array([3108.01022898, 3108.57550726, 2966.90708374, 3373.00978175, 3899.30094557,
-                                     4163.68538221, 4105.83931956, 4244.11450561, 2349.80752445, 1713.04113581]
-                                    ),
+         's2': {'cauvery': np.array([3077.80182893, 3084.27244785, 2944.2416295,  3356.42566003, 3884.70291555,
+                             4146.09093281, 4089.9417718,  4226.28939138, 2381.03087606, 1744.84373434]),
+                'ghana': np.array(
+             [2620.00, 2519.89, 2630.31, 2739.81, 3225.22, 3562.64, 3356.57, 3788.05, 2915.40, 2102.65]),
+                'southsudan': np.array(
+                    [2119.15, 2061.95, 2127.71, 2277.60, 2784.21, 3088.40, 2939.33, 3308.03, 2597.14, 1834.81]),
+                'tanzania': np.array(
+                    [2551.54, 2471.35, 2675.69, 2799.99, 3191.33, 3453.16, 3335.64, 3660.05, 3182.23, 2383.79]),
+                'germany': np.array(
+                    [1991.37, 2026.92, 2136.22, 6844.82, 9951.98, 11638.58, 3664.66, 12375.27, 7351.99, 5027.96])},
+         'planet': {'ghana': np.array([1264.81, 1255.25, 1271.10, 2033.22]),
+                    'southsudan': np.array([1091.30, 1092.23, 1029.28, 2137.77]),
+                    'tanzania': np.array([1014.16, 1023.31, 1114.17, 1813.49])},
+         's2_cldfltr': {'ghana': np.array(
+             [1362.68, 1317.62, 1410.74, 1580.05, 2066.06, 2373.60, 2254.70, 2629.11, 2597.50, 1818.43]),
+                        'southsudan': np.array(
+                            [1137.58, 1127.62, 1173.28, 1341.70, 1877.70, 2180.27, 2072.11, 2427.68, 2308.98, 1544.26]),
+                        'tanzania': np.array(
+                            [1148.76, 1138.87, 1341.54, 1517.01, 1937.15, 2191.31, 2148.05, 2434.61, 2774.64,
+                             2072.09])}},
+
+         'plotwise':
+             {'l8': {'cauvery': np.array([12510.17013478, 12811.73275677, 13840.56329285, 13658.85679646,
+                                            19316.06065994, 14344.93290226, 12067.63016428, 32553.76575401])},
+         's1': {'cauvery': np.array([5.31082689e+04, 5.33025678e+04, 3.42494164e+01]),
+                'ghana': np.array([-10.50, -17.24, 1.17]),
+                'southsudan': np.array([-9.02, -15.26, 1.15]),
+                'tanzania': np.array([-9.80, -17.05, 1.30])},
+         's2': {'cauvery': np.array([3067.43027738, 3068.67802172, 2927.52472211, 3333.95464914, 3864.26186636,
+                            4127.72804715, 4069.16838154, 4209.3863639,  2330.53895157, 1697.87979416]),
                 'ghana': np.array(
              [2620.00, 2519.89, 2630.31, 2739.81, 3225.22, 3562.64, 3356.57, 3788.05, 2915.40, 2102.65]),
                 'southsudan': np.array(
@@ -65,15 +93,45 @@ MEANS = {'l8': {'cauvery': np.array([12558.89427922, 12872.24406909, 13913.83910
                             [1148.76, 1138.87, 1341.54, 1517.01, 1937.15, 2191.31, 2148.05, 2434.61, 2774.64,
                              2072.09])}}
 
-STDS = {'l8': {'cauvery': np.array([ 9747.84754584, 9622.92064816, 8927.98241943, 8946.08505605,
-                                     8612.84496105, 6473.25556217, 5417.70972386, 18185.18003696]
-                                    )},
-        's1': {'cauvery': np.array([2.52427781e+04, 2.50943441e+04, 7.11629635e+00]),
+         }
+
+STDS = {'regionwise':
+
+            {'l8': {'cauvery': np.array([ 9811.34429255,  9679.50989908,  8985.48993455,  9001.85187442,
+                                                    8666.72647788,  6477.19337138,  5428.2011345,  18263.04960189])},
+        's1': {'cauvery': np.array([2.53692211e+04, 2.52311387e+04, 7.32906139e+00]),
                'ghana': np.array([3.57, 4.86, 5.60]),
                'southsudan': np.array([4.49, 6.68, 21.75]),
                'tanzania': np.array([3.53, 4.78, 16.61])},
-        's2': {'cauvery': np.array([3303.47430809, 3062.50768404, 2957.67368827, 3009.07836915, 2622.06770755,
-                                    2480.28326843, 2498.1041116, 2381.20874154, 1605.36524433, 1421.42178719]),
+        's2': {'cauvery': np.array([3303.74822819, 3057.09074463, 2946.57655367, 2997.19526042, 2610.09702032,
+                             2469.30697291, 2483.67488076, 2369.08866661, 1603.58160356, 1419.04843785]),
+
+                'ghana': np.array(
+            [2171.62, 2085.69, 2174.37, 2084.56, 2058.97, 2117.31, 1988.70, 2099.78, 1209.48, 918.19]),
+               'southsudan': np.array(
+                   [2113.41, 2026.64, 2126.10, 2093.35, 2066.81, 2114.85, 2049.70, 2111.51, 1320.97, 1029.58]),
+               'tanzania': np.array(
+                   [2290.97, 2204.75, 2282.90, 2214.60, 2182.51, 2226.10, 2116.62, 2210.47, 1428.33, 1135.21]),
+               'germany': np.array(
+                   [1943.62, 1755.82, 1841.09, 5703.38, 5104.90, 5136.54, 1663.27, 5125.05, 3682.57, 3273.71])},
+        'planet': {'ghana': np.array([602.51, 598.66, 637.06, 966.27]),
+                   'southsudan': np.array([526.06, 517.05, 543.74, 1022.14]),
+                   'tanzania': np.array([492.33, 492.71, 558.90, 833.65])},
+        's2_cldfltr': {
+            'ghana': np.array([511.19, 495.87, 591.44, 590.27, 745.81, 882.05, 811.14, 959.09, 964.64, 809.53]),
+            'southsudan': np.array(
+                [548.64, 547.45, 660.28, 677.55, 896.28, 1066.91, 1006.01, 1173.19, 1167.74, 865.42]),
+            'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}
+                       },
+
+        'plotwise': {'l8': {'cauvery': np.array([ 9809.87028069,  9684.29850479,  9003.76874011,  9014.18431093,
+                    8708.08620149,  6487.98790027,  5429.55101277, 18357.46182696])},
+        's1': {'cauvery': np.array([2.56819425e+04, 2.55194371e+04, 7.51113472e+00]),
+               'ghana': np.array([3.57, 4.86, 5.60]),
+               'southsudan': np.array([4.49, 6.68, 21.75]),
+               'tanzania': np.array([3.53, 4.78, 16.61])},
+        's2': {'cauvery': np.array([3290.45689244, 3049.48023399, 2943.81480081, 2997.7516072,  2612.79286555,
+                             2472.20530761, 2488.78082753, 2372.71326428, 1589.24245901, 1407.99526645]),
                 'ghana': np.array(
             [2171.62, 2085.69, 2174.37, 2084.56, 2058.97, 2117.31, 1988.70, 2099.78, 1209.48, 918.19]),
                'southsudan': np.array(
@@ -90,8 +148,7 @@ STDS = {'l8': {'cauvery': np.array([ 9747.84754584, 9622.92064816, 8927.98241943
             'southsudan': np.array(
                 [548.64, 547.45, 660.28, 677.55, 896.28, 1066.91, 1006.01, 1173.19, 1167.74, 865.42]),
             'tanzania': np.array([462.40, 449.22, 565.88, 571.42, 686.04, 789.04, 758.31, 854.39, 1071.74, 912.79])}}
-
-
+        }
 class CauveryDataset(SustainBenchDataset):
     """
     The Farmland Parcel Delineation dataset.
@@ -120,13 +177,14 @@ class CauveryDataset(SustainBenchDataset):
         }
     }
 
-    def __init__(self, version=None, root_dir='data', download=False, split_scheme='cauvery',
+    def __init__(self, version=None, root_dir='data', download=False, split_scheme='cauvery',splitting_technique='regionwise',
                  resize_planet=False, calculate_bands=True, normalize=True, task="date_prediction",
                  l8_bands=[0,1,2,3,4,5,6,7], s1_bands=[0,1,2], s2_bands=[0,1,2,3,4,5,6,7,8,9],
                  ps_bands=[0,1,2,3], truth_mask=10, img_dim=(32,32), date_pred_for=None, use_actual_season=False):
         self._resize_planet = resize_planet
         self._calculate_bands = calculate_bands
         self._normalize = normalize
+        self._splitting_technique = splitting_technique
         self.task = task
         self._version = version
         self.date_pred_for = date_pred_for
@@ -152,7 +210,7 @@ class CauveryDataset(SustainBenchDataset):
         self._split_scheme = split_scheme
         self._country = 'cauvery'
 
-        split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv')).dropna(subset=['SPLIT_YIELD'])
+        split_df = pd.read_csv(os.path.join(self.data_dir, self._country, f'cauvery_dataset_{splitting_technique}.csv')).dropna(subset=['SPLIT_YIELD'])
         # print(split_df['PLOT_ID'][2380:2390])
         # split_df = pd.read_csv(os.path.join(self.data_dir, self._country, 'cauvery_dataset.csv'))
 
@@ -457,8 +515,8 @@ class CauveryDataset(SustainBenchDataset):
         # print(satellite)
         num_bands = grid.shape[0]
         # print(grid.shape)
-        means = MEANS[satellite][self.country]
-        stds = STDS[satellite][self.country]
+        means = MEANS[self.splitting_technique][satellite][self.country]
+        stds = STDS[self.splitting_technique][satellite][self.country]
         grid = (grid - means[:num_bands].reshape(num_bands, 1, 1, 1)) / stds[:num_bands].reshape(num_bands, 1, 1, 1)
 
         if satellite not in ['s1', 's2', 'l8','planet']:
@@ -485,6 +543,13 @@ class CauveryDataset(SustainBenchDataset):
         True if planet satellite imagery will be resized to other satellite sizes.
         """
         return self._resize_planet
+
+    @property
+    def splitting_technique(self):
+        """
+        True if planet satellite imagery will be resized to other satellite sizes.
+        """
+        return self._splitting_technique
 
     @property
     def calculate_bands(self):
