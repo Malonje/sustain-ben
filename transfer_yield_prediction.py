@@ -120,7 +120,7 @@ prev_val_rmse=np.inf
 
 if patience is not None:
     epochs_without_improvement = 0
-run_name = logger.init(project='transfer_crop_yield', reinit=True)
+run_name = logger.init(project='yield_pred_with_splits', reinit=True)
 for epoch in range(num_epochs):
     print(f"Epoch [{epoch + 1}/'{num_epochs}']" )
     model.train()

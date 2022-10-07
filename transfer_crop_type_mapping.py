@@ -143,7 +143,7 @@ def train_dl_model(model, model_name, dataloaders, args):
             train_data = dataloaders.get_subset(split)
 
             if split == 'train':
-                train_loader = get_train_loader('standard', train_data, args.batch_size, sampler=sampler)
+                train_loader = get_train_loader('standard', train_data, args.batch_size, sampler=None)
                 model.train()
             else:
                 train_loader = get_eval_loader('standard', train_data, args.batch_size)

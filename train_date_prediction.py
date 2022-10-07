@@ -111,7 +111,8 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         'use_s1': args.use_s1,
         'use_s2': args.use_s2,
         'use_planet': args.use_planet,
-        'use_actual_season': args.use_actual_season
+        'use_actual_season': args.use_actual_season,
+        'split': args.split
     }
     # run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
@@ -124,7 +125,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         sat_names += "L8"
     if args.use_planet:
         sat_names += "planet"
-    run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=f'{args.run_name}_{sat_names}_{args.l8_bands}_{args.s2_bands}_{args.s1_bands}', config=config)
+    run_name = logger.init(project='date_prediction_with_splits', reinit=True, run_name=f'{args.run_name}_{sat_names}_{args.l8_bands}_{args.s2_bands}_{args.s1_bands}', config=config)
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
@@ -485,7 +486,7 @@ def main(args):
         img_dimension = (3,3)
 
     dataset = get_dataset(dataset='crop_sowing_transplanting_harvesting', split_scheme="cauvery", resize_planet=True,
-                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images,
+                          normalize=True, calculate_bands=True, root_dir=args.path_to_cauvery_images, splitting_technique=args.split,
                           l8_bands=l8_bands, s1_bands=s1_bands, s2_bands=s2_bands, ps_bands=ps_bands,
                           truth_mask=truth_mask, img_dim=img_dimension, date_pred_for=args.date_pred_for)
 

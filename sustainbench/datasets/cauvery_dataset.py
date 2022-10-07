@@ -340,7 +340,7 @@ class CauveryDataset(SustainBenchDataset):
 
             s2 = s2[:, :, None, :,:]
 
-            s2= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(s2)
+            # s2= transforms.ColorJitter(brightness=0.6, contrast=0, saturation=0, hue=0)(s2)
             s2=torch.squeeze(s2, 2)
             # s2 = s2.permute(3, 0, 1, 2)
             s2 = s2.permute(1, 2, 3, 0)
@@ -349,7 +349,7 @@ class CauveryDataset(SustainBenchDataset):
             # l8 = l8.permute(3, 0, 1, 2)
             l8 = transforms.Resize(self.img_dim,interpolation=transforms.InterpolationMode.NEAREST)(l8)
             l8 = l8[:, :, None, :,:]
-            l8= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(l8)
+            # l8= transforms.ColorJitter(brightness=0.5, contrast=0, saturation=0, hue=0)(l8)
             l8=torch.squeeze(l8, 2)
             l8 = l8.permute(1, 2, 3, 0)
 
