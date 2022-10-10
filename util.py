@@ -350,7 +350,7 @@ def get_train_parser():
                         help="Optimizer to use for training",
                         default="adam",
                         choices=('sgd', 'adam', 'adam_amsgrad'))
-    parser.add_argument('--lr', type=float, default=0.003,
+    parser.add_argument('--lr', type=float, default=0.0003,
                         help="Initial learning rate to use")
     parser.add_argument('--momentum', type=float,
                         help="Momentum to use when training",

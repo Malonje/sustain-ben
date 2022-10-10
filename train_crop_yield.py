@@ -114,9 +114,10 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         'use_s2': args.use_s2,
         'use_planet': args.use_planet,
         'use_actual_season': args.use_actual_season,
-        'split': args.split
+        'split': args.split,
+        'seed':args.seed
     }
-    run_name = logger.init(project='crop_yield_with_splits', reinit=True, run_name=args.run_name, config=config)
+    run_name = logger.init(project='crop_yield_with_splits', reinit=True, run_name=f'{args.run_name}_seed{args.seed}', config=config)
     sat_names = ""
     if args.use_s1:
         sat_names += "S1"

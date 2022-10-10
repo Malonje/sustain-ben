@@ -112,7 +112,9 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         'use_s2': args.use_s2,
         'use_planet': args.use_planet,
         'use_actual_season': args.use_actual_season,
-        'split': args.split
+        'split': args.split,
+        'seed': args.seed
+
     }
     # run_name = logger.init(project='date_prediction_v3', reinit=True, run_name=args.run_name, config=config)
     # splits = ['train', 'val'] if not args.eval_on_test else ['test']
@@ -125,7 +127,7 @@ def train_dl_model(model, model_name, dataloaders, args, dataset):
         sat_names += "L8"
     if args.use_planet:
         sat_names += "planet"
-    run_name = logger.init(project='date_prediction_with_splits', reinit=True, run_name=f'{args.run_name}_{sat_names}_{args.l8_bands}_{args.s2_bands}_{args.s1_bands}', config=config)
+    run_name = logger.init(project='date_prediction_with_splits', reinit=True, run_name=f'{args.run_name}_seed{args.seed}', config=config)
     if args.clip_val:
         clip_val = sum(p.numel() for p in model.parameters() if p.requires_grad) // 20000
         print('clip value: ', clip_val)
